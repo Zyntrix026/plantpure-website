@@ -56,7 +56,6 @@ function Navbar() {
     navigate("/");
   };
 
-  // Proper page navigation links instead of hash targets
   const navLinks = [
     { label: "Home", to: "/" },
     { label: "About", to: "/about" },

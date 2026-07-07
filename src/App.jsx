@@ -27,6 +27,7 @@ import Blogs from "./pages/Blogs";
 import Contact from "./pages/Contact";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
+import BlogDetails from "./pages/BlogDetails";
 
 const ProtectedRoute = ({ children }) => {
   return isAuthenticated() ? children : <Navigate to="/" replace />;
@@ -63,10 +64,11 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/about" element={<About/>} />
           <Route path="/blogs" element={<Blogs/>} />
+          <Route path="/blogs/:slug" element={<BlogDetails/>} />
           <Route path="/contact" element={<Contact/>} />
           <Route path="/privacy-policy" element={<PrivacyPolicy/>} />
           <Route path="/terms-of-service" element={<TermsOfService/>} />
-          <Route path="/:category/:slug" element={<ProductDetail />} />
+          {/* <Route path="/:category/:slug" element={<ProductDetail />} /> */}
           <Route path="/products" element={<Product />} />
           <Route path="/login" element={<Login />} />
           <Route path="/checklist" element={<CheckList />} />

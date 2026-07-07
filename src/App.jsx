@@ -68,7 +68,7 @@ export default function App() {
           <Route path="/contact" element={<Contact/>} />
           <Route path="/privacy-policy" element={<PrivacyPolicy/>} />
           <Route path="/terms-of-service" element={<TermsOfService/>} />
-          {/* <Route path="/:category/:slug" element={<ProductDetail />} /> */}
+          <Route path="/:category/:slug" element={<ProductDetail />} />
           <Route path="/products" element={<Product />} />
           <Route path="/login" element={<Login />} />
           <Route path="/checklist" element={<CheckList />} />

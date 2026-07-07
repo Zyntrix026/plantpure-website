@@ -25,7 +25,7 @@ const AboutContent = () => {
             {/* Right Image Column */}
             <div className="lg:col-span-5 h-[300px] sm:h-[400px] rounded-3xl overflow-hidden shadow-md bg-gray-100">
               <img 
-                src="https://plantpure.in/wp-content/uploads/2025/10/about_plantpure-edited.jpg" 
+                src="/about_plantpure-edited.jpg" 
                 alt="PlantPure Natural Hair Care" 
                 className="w-full h-full object-cover"
                 loading="lazy"

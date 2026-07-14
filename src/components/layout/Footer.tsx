@@ -165,6 +165,7 @@ function Footer() {
             {[
               { label: "Privacy Policy", href: "/privacy-policy" },
               { label: "Terms of Service", href: "/terms-of-service" },
+              { label: "Refund Policy", href: "/refund-policy" },
             ].map((metaLink) => (
               <Link
                 key={metaLink.label} 

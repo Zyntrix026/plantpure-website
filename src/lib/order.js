@@ -1,12 +1,19 @@
 import { api } from "./api.js";
 
-export const createOrderAfterPayment = async ({ paymentIntentId, shippingAddress, shippingMethod }) => {
+export const createOrderAfterPayment = async ({ cfOrderId, shippingAddress, shippingMethod, guestEmail, items }) => {
   const response = await api.post("/orders/create-after-payment", {
-    paymentIntentId,
+    cfOrderId,
     shippingAddress,
     shippingMethod,
+    ...(guestEmail && { guestEmail }),
+    ...(items && { items }),
   });
-  return response.data; // { success, message, data: { orderId, orderNumber, ... } }
+  return response.data;
+};
+
+export const getOrderByCfOrderId = async (cfOrderId) => {
+  const response = await api.get(`/orders/by-cf/${cfOrderId}`);
+  return response.data;
 };
 
 export const getMyOrders = async (page = 1, limit = 10) => {

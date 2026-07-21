@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { CheckCircle, Package, MapPin, CreditCard, Loader2, XCircle, X, AlertTriangle, RefreshCcw, AlertOctagon } from "lucide-react";
-import { getOrderById, requestCancellation } from "../lib/order";
+import { getOrderById, getOrderByCfOrderId, createOrderAfterPayment, requestCancellation } from "../lib/order";
+import { useCart } from "../context/CartContext";
 import { toast } from "react-hot-toast";
 
 const CANCELLABLE_DELIVERY = new Set(["pending", "confirmed", "processing"]);
@@ -20,16 +21,48 @@ const OrderConfirmation = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const isSuccess = searchParams.get("success") === "true";
+  const { updateCartCount } = useCart();
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const isCfOrderId = id?.startsWith("CF_");
+
   useEffect(() => {
-    getOrderById(id)
-      .then((res) => setOrder(res.data))
-      .catch((err) => setError(err.message))
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        if (isCfOrderId) {
+          // Cashfree redirect landing — create order first if not yet created
+          const pending = sessionStorage.getItem("pendingOrder");
+          if (pending) {
+            const { cfOrderId, shippingAddress, shippingMethod } = JSON.parse(pending);
+            try {
+              await createOrderAfterPayment({ cfOrderId, shippingAddress, shippingMethod });
+              sessionStorage.removeItem("pendingOrder");
+              updateCartCount(0);
+            } catch (createErr) {
+              // If already created (idempotency), ignore duplicate error
+              if (!createErr.message?.includes("already")) {
+                console.error("Order creation error:", createErr.message);
+              }
+            }
+          }
+          // Now fetch order by cfOrderId
+          const res = await getOrderByCfOrderId(id);
+          setOrder(res.data);
+        } else {
+          // Normal MongoDB _id lookup
+          const res = await getOrderById(id);
+          setOrder(res.data);
+        }
+      } catch (err) {
+        setError(err.response?.data?.message || err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [id]);
 
   const [showCancelModal, setShowCancelModal] = useState(false);

@@ -1,23 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, CheckCircle, Search, Truck, Store } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  CardElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+import { Loader2, CheckCircle, Search, Truck, Store, Tag, X } from "lucide-react";
 import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
 import toast from "react-hot-toast";
 import { getCart } from "../lib/cart";
 import { createOrderAfterPayment, checkDelivery } from "../lib/order";
-import { createPaymentIntentFromCart } from "../lib/payment";
-import { Tag, X } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { getProfile } from "../lib/profile";
+import { api } from "../lib/api.js"; // Central API helper for making POST requests
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const libraries = ["places"];
 
@@ -37,12 +28,8 @@ const calcDeliveryFee = (shipping_category, distanceMiles) => {
 const calcCartDeliveryFee = (items, distanceMiles) => {
   if (!items || items.length === 0) return 0;
   if (distanceMiles === null || distanceMiles === undefined) return null;
-  const categories = [
-    ...new Set(items.map((i) => i.shipping_category ?? "SP")),
-  ];
-  return Math.max(
-    ...categories.map((cat) => calcDeliveryFee(cat, distanceMiles)),
-  );
+  const categories = [...new Set(items.map((i) => i.shipping_category ?? "SP"))];
+  return Math.max(...categories.map((cat) => calcDeliveryFee(cat, distanceMiles)));
 };
 
 const calcTotal = (items, distanceMiles = null, isPickup = false, discount = 0, isFreeShipping = false) => {
@@ -57,9 +44,7 @@ const calcTotal = (items, distanceMiles = null, isPickup = false, discount = 0, 
     subtotalExclVat += priceExcl * qty;
     totalVat += (priceIncl - priceExcl) * qty;
   });
-  const shipping = (isPickup || isFreeShipping)
-    ? 0
-    : (calcCartDeliveryFee(items, distanceMiles) ?? 0);
+  const shipping = (isPickup || isFreeShipping) ? 0 : (calcCartDeliveryFee(items, distanceMiles) ?? 0);
   const total = Math.max(subtotalExclVat + totalVat + shipping - discount, 0);
   return {
     subtotal: subtotalExclVat,
@@ -85,13 +70,9 @@ const CheckoutForm = ({
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [coords, setCoords] = useState(null);
   const [searchInput, setSearchInput] = useState("");
-  const [clientSecret, setClientSecret] = useState(null);
-  const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(null); // { code, discountAmount, isFreeShipping }
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const autocompleteRef = useRef(null);
-  const stripe = useStripe();
-  const elements = useElements();
 
   const [form, setForm] = useState({
     email: "",
@@ -110,8 +91,7 @@ const CheckoutForm = ({
       .then((res) => {
         if (res.success) {
           const { name, email, phone, addresses } = res.data;
-          const def =
-            addresses?.find((a) => a.isDefault) || addresses?.[0] || null;
+          const def = addresses?.find((a) => a.isDefault) || addresses?.[0] || null;
           setDefaultAddress(def);
           setForm((prev) => ({
             ...prev,
@@ -127,8 +107,7 @@ const CheckoutForm = ({
   const isPickup = shippingMethod === "store_pickup";
   const { total } = calcTotal(items, distanceMiles, isPickup, appliedCoupon?.discountAmount ?? 0, appliedCoupon?.isFreeShipping ?? false);
 
-  const handleChange = (e) =>
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleChange = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const onPlaceChanged = () => {
     const place = autocompleteRef.current?.getPlace();
@@ -146,9 +125,7 @@ const CheckoutForm = ({
 
   const handleVerifyDelivery = async () => {
     if (!searchInput.trim() || !coords) {
-      toast.error(
-        "Please search and select a valid address from the dropdown first.",
-      );
+      toast.error("Please search and select a valid address from the dropdown first.");
       return;
     }
     setCheckingLocation(true);
@@ -162,7 +139,7 @@ const CheckoutForm = ({
           address: defaultAddress.street || "",
           city: defaultAddress.city || "",
           postalCode: defaultAddress.zipCode || "",
-          country: defaultAddress.country || "United Kingdom",
+          country: defaultAddress.country || "India",
         }));
       }
     } catch {
@@ -174,8 +151,6 @@ const CheckoutForm = ({
 
   const handleShippingMethodChange = (method) => {
     setShippingMethod(method);
-    setClientSecret(null);
-    setPaymentIntentId(null);
     setDeliveryStatus(null);
     setDistanceMiles(null);
     onShippingMethodChange?.(method === "store_pickup");
@@ -184,12 +159,9 @@ const CheckoutForm = ({
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
     setCouponInput("");
-    setClientSecret(null);
-    setPaymentIntentId(null);
     onCouponApplied?.(null);
   };
 
-  // Build shippingAddress based on method
   const buildShippingAddress = () => {
     if (isPickup) {
       return {
@@ -204,109 +176,123 @@ const CheckoutForm = ({
     return { ...form, ...coords };
   };
 
-  const handleInitPayment = async () => {
+  // FULL SINGLE-STEP PAY LOGIC
+  const handleCheckoutAndPay = async (e) => {
+    e.preventDefault();
+
     if (!isPickup && !deliveryStatus?.available) {
-      toast.error("Verify delivery first");
+      toast.error("Please verify your delivery address first.");
       return;
     }
+    if (!form.fullName || !form.email || !form.phone) {
+      toast.error("Please complete your contact details before paying.");
+      return;
+    }
+    if (!window.Cashfree) {
+      toast.error("Cashfree SDK failed to load. Make sure the SDK script is inside your index.html.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       const shippingAddress = buildShippingAddress();
-      const res = await createPaymentIntentFromCart(
+
+      // Step 1: Create session directly when user clicks "Pay"
+      const response = await api.post("/payments/create-session", {
         shippingAddress,
         shippingMethod,
-        appliedCoupon?.code ?? null,
-      );
-      if (!res.success) throw new Error(res.message);
-      setClientSecret(res.data.clientSecret);
-      setPaymentIntentId(res.data.paymentIntentId);
-      // Server se confirmed coupon data update karo
-      if (res.data.coupon) {
-        setAppliedCoupon(res.data.coupon);
-        onCouponApplied?.(res.data.coupon);
+        couponCode: appliedCoupon?.code ?? null
+      });
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || "Could not generate payment session.");
       }
-      toast.success("Payment initialized. Enter your card details.");
+
+      const { paymentSessionId, orderId: cfOrderId } = response.data.data;
+
+      // Store checkout context so OrderConfirmation can create the order after redirect
+      sessionStorage.setItem("pendingOrder", JSON.stringify({
+        cfOrderId,
+        shippingAddress: buildShippingAddress(),
+        shippingMethod,
+      }));
+
+      // Step 2: Immediately open Cashfree Drop-In UI overlay
+      const cashfree = window.Cashfree({
+        mode: import.meta.env.PROD ? "production" : "sandbox"
+      });
+
+      const checkoutOptions = {
+        paymentSessionId: paymentSessionId,
+        redirectTarget: "_self",
+      };
+
+      cashfree.checkout(checkoutOptions).then(async (result) => {
+        if (result.error) {
+          toast.error(result.error.message || "Payment cancelled or failed.");
+          sessionStorage.removeItem("pendingOrder");
+          setSubmitting(false);
+          return;
+        }
+
+        if (result.redirect) {
+          // Page will redirect — OrderConfirmation will handle order creation
+          return;
+        }
+
+        // In-page payment completed (non-redirect flow)
+        if (result.paymentDetails) {
+          await verifyAndCreateOrder(cfOrderId);
+        }
+      });
+
     } catch (err) {
-      toast.error(err.message || "Failed to initialize payment");
-    } finally {
+      console.error("Checkout flow failed:", err);
+      toast.error(err.message || "An error occurred launching checkout.");
       setSubmitting(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (submitting || !clientSecret || !paymentIntentId) return;
-    if (!stripe || !elements) {
-      toast.error("Stripe not loaded");
-      return;
-    }
-    console.log(
-      "Submitting payment with clientSecret:",
-      clientSecret,
-      submitting,
-      paymentIntentId,
-    );
+  const verifyAndCreateOrder = async (cfOrderId) => {
     try {
-      setSubmitting(true);
-
-      // Step 1: Confirm card payment
-      const { error, paymentIntent } = await stripe.confirmCardPayment(
-        clientSecret,
-        {
-          payment_method: {
-            card: elements.getElement(CardElement),
-            billing_details: {
-              name: form.fullName,
-              email: form.email,
-              phone: form.phone,
-            },
-          },
-        },
-      );
-
-      if (error) throw new Error(error.message);
-      if (paymentIntent.status !== "succeeded") {
-        toast.error("Payment not completed");
-        return;
-      }
-
-      // Step 2: Create order after payment succeeded
       const shippingAddress = buildShippingAddress();
+      
       const orderRes = await createOrderAfterPayment({
-        paymentIntentId: paymentIntent.id,
+        cfOrderId,
         shippingAddress,
         shippingMethod,
       });
 
-      if (!orderRes.success) throw new Error(orderRes.message);
+      if (!orderRes.success) {
+        throw new Error(orderRes.message || "Verification failed, please contact support.");
+      }
 
+      sessionStorage.removeItem("pendingOrder");
       updateCartCount(0);
       toast.success("Order placed successfully!");
-      navigate(`/orders/${orderRes.data.orderId}?success=true`);
+      navigate(`/orders/${cfOrderId}?success=true`);
     } catch (err) {
-      toast.error(err.message || "Something went wrong");
+      console.error("Order completion verification error:", err);
+      toast.error(err.message || "Order tracking confirmation failed.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  const canPlaceOrder = !!clientSecret && !!paymentIntentId;
-
   return (
-    <form onSubmit={handleSubmit} className="flex-1 space-y-6 w-full">
-      {/* SECTION 1: CONTACT */}
-
+    <form onSubmit={handleCheckoutAndPay} className="flex-1 space-y-6 w-full">
+      {/* Contact Section */}
       <button
-        className="px-8 py-1.5 bg-primary text-white rounded-md"
+        type="button"
+        className="px-8 py-1.5 bg-primary text-white rounded-md mb-2"
         onClick={() => window.history.back()}
       >
         Back
       </button>
+      
       <section className="space-y-4">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">
-            1
-          </span>
+          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
           Contact Information
         </h3>
         <input
@@ -321,14 +307,15 @@ const CheckoutForm = ({
         />
       </section>
 
-      {/* SECTION 2: SHIPPING METHOD */}
+      {/* Shipping Section */}
       <section className="space-y-4">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">
-            2
-          </span>
+          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
           Shipping Method
         </h3>
+        
+        {/* HIDDEN / COMMENTED OUT STORE PICKUP SWITCHER TABS */}
+        {/* 
         <div className="grid grid-cols-2 border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
           <button
             type="button"
@@ -345,35 +332,31 @@ const CheckoutForm = ({
             <Store size={16} /> Store Pickup
           </button>
         </div>
+        */}
 
-        {isPickup && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 font-medium animate-in fade-in slide-in-from-top-1">
+        {/* HIDDEN / COMMENTED OUT STORE ADDRESS NOTIFICATION PANEL */}
+        {/* 
+        {isPickup ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 font-medium">
             <p className="font-bold mb-1">📍 Store Address</p>
-            <p>
-              You can pick up your order directly from our store. Payment is
-              required online to confirm your order.
-            </p>
+            <p>You can pick up your order directly from our store. Payment is required online to confirm your order.</p>
           </div>
-        )}
-
-        {/* Delivery address section */}
-        {!isPickup && (
+        ) : (
+        */}
           <div className="space-y-4">
             <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4 shadow-sm">
               <div className="relative">
-                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">
-                  Search Your Address
-                </label>
+                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">Search Your Address</label>
                 <div className="relative mt-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
                   <Autocomplete
                     onLoad={(ac) => (autocompleteRef.current = ac)}
                     onPlaceChanged={onPlaceChanged}
-                    options={{ componentRestrictions: { country: ["in", "gb"] } }}
+                    options={{ componentRestrictions: { country: ["in"] } }}
                   >
                     <input
                       type="text"
-                      placeholder="Enter first line of the address"
+                      placeholder="Enter address details"
                       onChange={(e) => {
                         setSearchInput(e.target.value);
                         if (!e.target.value) { setCoords(null); setDeliveryStatus(null); }
@@ -389,24 +372,12 @@ const CheckoutForm = ({
                 disabled={checkingLocation || !searchInput.trim()}
                 className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${!searchInput.trim() || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90 active:scale-[0.98]"}`}
               >
-                {checkingLocation ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Truck size={18} />
-                )}
-                {checkingLocation
-                  ? "Checking Coverage..."
-                  : "Verify Delivery Coverage"}
+                {checkingLocation ? <Loader2 size={16} className="animate-spin" /> : <Truck size={18} />}
+                {checkingLocation ? "Checking Coverage..." : "Verify Delivery Coverage"}
               </button>
               {deliveryStatus && (
-                <div
-                  className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border animate-in fade-in slide-in-from-top-1 ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}
-                >
-                  {deliveryStatus.available ? (
-                    <CheckCircle size={18} className="shrink-0" />
-                  ) : (
-                    <Truck size={18} className="shrink-0" />
-                  )}
+                <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                  {deliveryStatus.available ? <CheckCircle size={18} className="shrink-0" /> : <Truck size={18} className="shrink-0" />}
                   <span>{deliveryStatus.message}</span>
                 </div>
               )}
@@ -419,7 +390,7 @@ const CheckoutForm = ({
                 value={form.fullName}
                 onChange={handleChange}
                 readOnly
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
               <input
                 name="phone"
@@ -428,7 +399,7 @@ const CheckoutForm = ({
                 value={form.phone}
                 readOnly
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
             </div>
             <input
@@ -437,7 +408,7 @@ const CheckoutForm = ({
               required
               value={form.address}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
             />
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -446,7 +417,7 @@ const CheckoutForm = ({
                 required
                 value={form.city}
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
               <input
                 name="postalCode"
@@ -454,13 +425,16 @@ const CheckoutForm = ({
                 required
                 value={form.postalCode}
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
             </div>
           </div>
-        )}
+        {/* 
+        )} 
+        */}
 
-        {/* Store pickup — name, phone + optional address */}
+        {/* HIDDEN / COMMENTED OUT STORE PICKUP CONDITIONAL COMPONENT FORM */}
+        {/* 
         {isPickup && (
           <div className="space-y-3">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -471,7 +445,7 @@ const CheckoutForm = ({
                 value={form.fullName}
                 readOnly
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
               <input
                 name="phone"
@@ -480,16 +454,16 @@ const CheckoutForm = ({
                 value={form.phone}
                 readOnly
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
             </div>
-            <p className="text-xs text-gray-400 font-medium">Optional: add your address for receipt reference</p>
+            <p className="text-xs text-gray-400 font-medium">Optional: add address context</p>
             <input
               name="address"
               placeholder="Address (optional)"
               value={form.address}
               onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
             />
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -497,21 +471,22 @@ const CheckoutForm = ({
                 placeholder="City (optional)"
                 value={form.city}
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
               <input
                 name="postalCode"
                 placeholder="Pincode (optional)"
                 value={form.postalCode}
                 onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
               />
             </div>
           </div>
         )}
+        */}
       </section>
 
-      {/* SECTION 3: COUPON */}
+      {/* Coupon Section */}
       <section className="space-y-3">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
           <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
@@ -522,10 +497,11 @@ const CheckoutForm = ({
             <div className="flex items-center gap-2 text-green-700 font-semibold text-sm">
               <Tag size={16} />
               <span>{appliedCoupon.code}</span>
-              {appliedCoupon.isFreeShipping
-                ? <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">Free Shipping</span>
-                : <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">-₹{appliedCoupon.discountAmount?.toFixed(2)}</span>
-              }
+              {appliedCoupon.isFreeShipping ? (
+                <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">Free Shipping</span>
+              ) : (
+                <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">-₹{appliedCoupon.discountAmount?.toFixed(2)}</span>
+              )}
             </div>
             <button type="button" onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500 transition-colors">
               <X size={16} />
@@ -538,14 +514,13 @@ const CheckoutForm = ({
               placeholder="Enter coupon code"
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-              className="flex-1 border border-gray-300 rounded-lg p-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+              className="flex-1 border border-gray-300 rounded-lg p-3 text-sm outline-none"
             />
             <button
               type="button"
               onClick={async () => {
                 if (!couponInput.trim()) return;
                 try {
-                  const { api } = await import("../lib/api.js");
                   const res = await api.post("/coupons/validate", { code: couponInput.trim() });
                   if (res.data.success) {
                     const c = res.data.data;
@@ -565,53 +540,16 @@ const CheckoutForm = ({
         )}
       </section>
 
-      {/* SECTION 4: PAYMENT */}
-      <section className="space-y-4">
-        <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">
-            4
-          </span>
-          Payment
-        </h3>
-        <div className="border border-gray-300 rounded-xl p-4 bg-white space-y-4">
-          {!clientSecret ? (
-            <button
-              type="button"
-              onClick={handleInitPayment}
-              disabled={submitting || (!isPickup && !deliveryStatus?.available)}
-              className="w-full bg-black text-white py-3 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {submitting ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                "Initialize Payment"
-              )}
-            </button>
-          ) : (
-            <CardElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: "16px",
-                    color: "#1a1a1a",
-                    "::placeholder": { color: "#aab7c4" },
-                  },
-                },
-              }}
-            />
-          )}
-        </div>
-      </section>
-
+      {/* SINGLE SUBMIT AND PAY BUTTON */}
       <button
         type="submit"
-        disabled={submitting || !canPlaceOrder}
+        disabled={submitting}
         className="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:bg-gray-400 transform active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-base"
       >
         {submitting ? (
           <Loader2 size={20} className="animate-spin" />
         ) : (
-          `Place My Order • ₹${total.toFixed(2)}`
+          `Pay & Place Order • ₹${total.toFixed(2)}`
         )}
       </button>
     </form>
@@ -621,19 +559,12 @@ const CheckoutForm = ({
 const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
   const discount = appliedCoupon?.discountAmount ?? 0;
   const isFreeShipping = appliedCoupon?.isFreeShipping ?? false;
-  const { subtotal, vat, shipping, total } = calcTotal(
-    items,
-    distanceMiles,
-    isPickup,
-    discount,
-    isFreeShipping,
-  );
+  const { subtotal, vat, shipping, total } = calcTotal(items, distanceMiles, isPickup, discount, isFreeShipping);
   const { isVatInc } = useCart();
+  
   return (
     <div className="w-full lg:w-[380px] shrink-0 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit lg:sticky lg:top-8 lg:mt-0 mt-8">
-      <h3 className="text-lg font-bold text-primary mb-6 border-b pb-4">
-        Items in Cart
-      </h3>
+      <h3 className="text-lg font-bold text-primary mb-6 border-b pb-4">Items in Cart</h3>
       <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar py-3">
         {items.map((item) => {
           const activePrices = isVatInc ? item.prices?.includeVat : item.prices?.excludeVat;
@@ -643,29 +574,19 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
           return (
             <div key={item._id} className="flex gap-4 items-center">
               <div className="relative shrink-0 border border-gray-100 rounded-lg p-1">
-                <img
-                  src={item.image}
-                  className="w-12 h-12 object-contain"
-                  alt={item.name}
-                />
+                <img src={item.image} className="w-12 h-12 object-contain" alt={item.name} />
                 <span className="absolute -top-2 -right-2 bg-primary text-white w-5 h-5 flex items-center justify-center text-[10px] rounded-full font-bold shadow-md">
                   {item.quantity}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-800 truncate">
-                  {item.name}
-                </p>
+                <p className="text-sm font-semibold text-gray-800 truncate">{item.name}</p>
                 {item.variantLabel && (
                   <p className="text-[10px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded w-fit mt-0.5">{item.variantLabel}</p>
                 )}
-                <p className="text-xs text-gray-400">
-                  ₹{price.toFixed(2)} each
-                </p>
+                <p className="text-xs text-gray-400">₹{price.toFixed(2)} each</p>
               </div>
-              <span className="text-sm font-bold text-primary">
-                ₹{(price * item.quantity).toFixed(2)}
-              </span>
+              <span className="text-sm font-bold text-primary">₹{(price * item.quantity).toFixed(2)}</span>
             </div>
           );
         })}
@@ -675,19 +596,9 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
           <span>Subtotal (Net)</span>
           <span>₹{subtotal.toFixed(2)}</span>
         </div>
-        {/* <div className="flex justify-between text-sm text-gray-500">
-          <span>Total VAT</span>
-          <span>₹{vat.toFixed(2)}</span>
-        </div> */}
         <div className="flex justify-between text-sm text-gray-500">
           <span>Shipping</span>
-          <span
-            className={
-              isPickup || shipping === 0
-                ? "text-green-600 font-bold"
-                : "text-gray-800"
-            }
-          >
+          <span className={isPickup || shipping === 0 ? "text-green-600 font-bold" : "text-gray-800"}>
             {isPickup
               ? "FREE (Store Pickup)"
               : isFreeShipping
@@ -707,9 +618,7 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
         )}
         <div className="pt-4 mt-2 flex justify-between items-center border-t-2 border-primary/10">
           <span className="text-lg font-black text-primary">Grand Total</span>
-          <span className="text-xl font-black text-primary">
-            ₹{total.toFixed(2)}
-          </span>
+          <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
         </div>
       </div>
     </div>
@@ -744,15 +653,13 @@ const CheckoutPage = () => {
     <div className="bg-gray-50/50 min-h-screen lg:py-8 py-5">
       <div className="custom-container">
         <div className="flex flex-col lg:flex-row lg:gap-x-10 items-start">
-          <Elements stripe={stripePromise}>
-            <CheckoutForm
-              items={items}
-              distanceMiles={distanceMiles}
-              setDistanceMiles={setDistanceMiles}
-              onShippingMethodChange={setIsPickup}
-              onCouponApplied={setAppliedCoupon}
-            />
-          </Elements>
+          <CheckoutForm
+            items={items}
+            distanceMiles={distanceMiles}
+            setDistanceMiles={setDistanceMiles}
+            onShippingMethodChange={setIsPickup}
+            onCouponApplied={setAppliedCoupon}
+          />
           <OrderSummary
             items={items}
             distanceMiles={distanceMiles}

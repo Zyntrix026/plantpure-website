@@ -44,6 +44,7 @@ const LayoutWrapper = ({ children }) => {
     "/checkout",
     "/guest-checkout",
   ];
+  
   const shouldExclude = excludePaths.includes(location.pathname);
 
   return (

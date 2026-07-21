@@ -1,13 +1,10 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, CheckCircle, Search, Truck, Store, AlertCircle, Phone as PhoneIcon, Tag, X } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { Loader2, CheckCircle, Search, Truck, AlertCircle, Tag, X } from "lucide-react";
 import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
 import toast from "react-hot-toast";
 import { useCart } from "../context/CartContext";
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 const libraries = ["places"];
@@ -46,7 +43,7 @@ const calcTotal = (items, miles = null, isPickup = false, discount = 0, isFreeSh
   return { subtotal, vat, shipping, discount, total };
 };
 
-// ─── Validators (Updated with Advanced Logic) ─────────────────────────────────
+// ─── Validators ────────────────────────────────────────────────────────────────
 const validators = {
   email: (v) => {
     if (!v.trim()) return "Email is required";
@@ -66,16 +63,11 @@ const validators = {
   phone: (v) => {
     if (!v.trim()) return "Phone number is required";
     const digits = v.replace(/\D/g, "");
-    if (digits.length !== 10) return "Phone number must be exactly 10 digits (excluding +91)";
-    
-    // Check for spam sequences (e.g., 1111111111 or 0000000000)
+    if (digits.length !== 10) return "Phone number must be exactly 10 digits";
     const isRepeating = /^(\d)\1{9}$/.test(digits);
-    // Check for sequential sequences (e.g., 1234567890)
     const isSequential = "0123456789876543210".includes(digits);
-
     if (isRepeating) return "Invalid phone number (repeating digits)";
     if (isSequential) return "Invalid phone number (sequential digits)";
-    
     return "";
   },
   address: (v) => {
@@ -89,10 +81,10 @@ const validators = {
     return "";
   },
   postalCode: (v) => {
-  if (!v.trim()) return "PIN code is required";
-  if (!/^\d{6}$/.test(v.trim())) return "Enter a valid 6-digit PIN code";
-  return "";
-},
+    if (!v.trim()) return "PIN code is required";
+    if (!/^\d{6}$/.test(v.trim())) return "Enter a valid 6-digit PIN code";
+    return "";
+  },
 };
 
 const FieldError = ({ msg }) =>
@@ -107,19 +99,15 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
   const navigate = useNavigate();
   const { updateCartCount } = useCart();
   const [submitting, setSubmitting] = useState(false);
-  const [shippingMethod, setShippingMethod] = useState("delivery");
+  const [shippingMethod] = useState("delivery");
   const [deliveryStatus, setDeliveryStatus] = useState(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [coords, setCoords] = useState(null);
   const [searchInput, setSearchInput] = useState("");
-  const [clientSecret, setClientSecret] = useState(null);
-  const [paymentIntentId, setPaymentIntentId] = useState(null);
   const [touched, setTouched] = useState({});
   const [couponInput, setCouponInput] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const autocompleteRef = useRef(null);
-  const stripe = useStripe();
-  const elements = useElements();
 
   const [form, setForm] = useState({
     email: "", fullName: "", phone: "",
@@ -129,31 +117,24 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
   const isPickup = shippingMethod === "store_pickup";
   const { total } = calcTotal(items, distanceMiles, isPickup, appliedCoupon?.discountAmount ?? 0, appliedCoupon?.isFreeShipping ?? false);
 
-  // Validation Check
   const errors = {
     email: validators.email(form.email),
     fullName: validators.fullName(form.fullName),
     phone: validators.phone(form.phone),
-    ...((!isPickup) && {
-      address: validators.address(form.address),
-      city: validators.city(form.city),
-      postalCode: validators.postalCode(form.postalCode),
-    }),
+    address: validators.address(form.address),
+    city: validators.city(form.city),
+    postalCode: validators.postalCode(form.postalCode),
   };
-
-  const pickupFieldsValid = !errors.email && !errors.fullName && !errors.phone;
-  const deliveryFieldsValid = pickupFieldsValid && !errors.address && !errors.city && !errors.postalCode;
-  const canInitPayment = isPickup ? pickupFieldsValid : deliveryFieldsValid && deliveryStatus?.available;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     if (name === "phone") {
-        const onlyNums = value.replace(/[^0-9]/g, ""); 
-        if (onlyNums.length <= 10) {
-            setForm((prev) => ({ ...prev, [name]: onlyNums }));
-        }
+      const onlyNums = value.replace(/[^0-9]/g, "");
+      if (onlyNums.length <= 10) {
+        setForm((prev) => ({ ...prev, [name]: onlyNums }));
+      }
     } else {
-        setForm((prev) => ({ ...prev, [name]: value }));
+      setForm((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -201,114 +182,130 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
     }
   };
 
-  const handleShippingMethodChange = (method) => {
-    setShippingMethod(method);
-    setClientSecret(null);
-    setPaymentIntentId(null);
-    setDeliveryStatus(null);
-    setDistanceMiles(null);
-    onShippingMethodChange?.(method === "store_pickup");
-  };
-
   const handleRemoveCoupon = () => {
     setAppliedCoupon(null);
     setCouponInput("");
-    setClientSecret(null);
-    setPaymentIntentId(null);
     onCouponApplied?.(null);
   };
 
   const buildShippingAddress = () => {
-      const fullPhone = `+91${form.phone}`;
-      return isPickup
-      ? { fullName: form.fullName, phone: fullPhone, address: form.address || "", city: form.city || "", postalCode: form.postalCode || "", country: form.country }
-      : { ...form, phone: fullPhone, ...coords };
+    const fullPhone = `+91${form.phone}`;
+    return { ...form, phone: fullPhone, ...coords };
   };
 
   const touchAll = () => {
-    const fields = isPickup
-      ? ["email", "fullName", "phone"]
-      : ["email", "fullName", "phone", "address", "city", "postalCode"];
+    const fields = ["email", "fullName", "phone", "address", "city", "postalCode"];
     setTouched(fields.reduce((acc, f) => ({ ...acc, [f]: true }), {}));
   };
 
-  const handleInitPayment = async () => {
+  const handleCheckoutAndPay = async (e) => {
+    e.preventDefault();
     touchAll();
-    if (!canInitPayment) {
-      toast.error("Please fix errors or verify delivery before proceeding");
+
+    if (Object.values(errors).some((err) => err !== "")) {
+      toast.error("Please fix all errors before submitting.");
       return;
     }
+
+    if (!deliveryStatus?.available) {
+      toast.error("Please verify your delivery address coverage first.");
+      return;
+    }
+
+    if (!window.Cashfree) {
+      toast.error("Cashfree SDK failed to load. Please check your HTML setup.");
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const payload = {
-        shippingAddress: buildShippingAddress(),
-        shippingMethod,
-        items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || null, quantity: i.quantity })),
-        couponCode: appliedCoupon?.code ?? null,
-      };
-      const res = await fetch(`${API_URL}/payments/create-intent-from-cart`, {
+      const shippingAddress = buildShippingAddress();
+
+      const response = await fetch(`${API_URL}/payments/create-intent-from-cart`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          shippingAddress,
+          shippingMethod,
+          items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || null, quantity: i.quantity })),
+          couponCode: appliedCoupon?.code ?? null,
+          customerDetails: {
+            name: form.fullName,
+            email: form.email,
+            phone: `+91${form.phone}`,
+          },
+        }),
       });
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message);
-      setClientSecret(data.data.clientSecret);
-      setPaymentIntentId(data.data.paymentIntentId);
-      if (data.data.coupon) {
-        setAppliedCoupon(data.data.coupon);
-        onCouponApplied?.(data.data.coupon);
-      }
-      toast.success("Payment initialized. Enter your card details.");
+
+      const resData = await response.json();
+      if (!resData.success) throw new Error(resData.message || "Could not generate payment session.");
+
+      const { paymentSessionId, orderId: cfOrderId } = resData.data;
+
+      sessionStorage.setItem("pendingOrder", JSON.stringify({
+        cfOrderId,
+        shippingAddress,
+        shippingMethod,
+        isGuest: true,
+      }));
+
+      const cashfree = window.Cashfree({
+        mode: import.meta.env.PROD ? "production" : "sandbox",
+      });
+
+      cashfree.checkout({
+        paymentSessionId,
+        redirectTarget: "_self",
+      }).then(async (result) => {
+        if (result.error) {
+          toast.error(result.error.message || "Payment cancelled or failed.");
+          sessionStorage.removeItem("pendingOrder");
+          setSubmitting(false);
+          return;
+        }
+
+        if (result.paymentDetails) {
+          await verifyAndCreateOrder(cfOrderId);
+        }
+      });
     } catch (err) {
-      toast.error(err.message || "Failed to initialize payment");
-    } finally {
+      toast.error(err.message || "An error occurred launching checkout.");
       setSubmitting(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (submitting || !clientSecret || !paymentIntentId) return;
-    if (!stripe || !elements) { toast.error("Stripe not loaded"); return; }
+  const verifyAndCreateOrder = async (cfOrderId) => {
     try {
-      setSubmitting(true);
-      const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: {
-          card: elements.getElement(CardElement),
-          billing_details: { name: form.fullName, email: form.email, phone: `+91${form.phone}` },
-        },
-      });
-      if (error) throw new Error(error.message);
-      if (paymentIntent.status !== "succeeded") { toast.error("Payment failed"); return; }
-
-      const orderRes = await fetch(`${API_URL}/orders/create-after-payment`, {
+      const shippingAddress = buildShippingAddress();
+      const res = await fetch(`${API_URL}/orders/create-after-payment`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentIntentId: paymentIntent.id,
-          shippingAddress: buildShippingAddress(),
+          cfOrderId,
+          shippingAddress,
           shippingMethod,
           guestEmail: form.email,
           items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || null, quantity: i.quantity, name: i.name })),
         }),
       });
-      const orderData = await orderRes.json();
-      if (!orderData.success) throw new Error(orderData.message);
 
+      const orderData = await res.json();
+      if (!orderData.success) throw new Error(orderData.message || "Order verification failed.");
+
+      sessionStorage.removeItem("pendingOrder");
       localStorage.removeItem("guest_cart");
       updateCartCount(0);
       toast.success("Order placed successfully!");
       navigate(`/guest-order-success?orderNumber=${orderData.data.orderNumber}`);
     } catch (err) {
-      toast.error(err.message || "Something went wrong");
+      toast.error(err.message || "Order verification failed.");
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex-1 space-y-6 w-full">
+    <form onSubmit={handleCheckoutAndPay} className="flex-1 space-y-6 w-full">
       <button type="button" className="px-8 py-1.5 bg-primary text-white rounded-md text-sm font-bold" onClick={() => window.history.back()}>
         Back
       </button>
@@ -336,107 +333,68 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
           Shipping Method
         </h3>
 
-        <div className="grid grid-cols-2 border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
-          <button type="button" onClick={() => handleShippingMethodChange("delivery")}
-            className={`py-3.5 text-sm font-bold flex items-center justify-center gap-2 transition-all ${shippingMethod === "delivery" ? "bg-primary text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-            <Truck size={16} /> Home Delivery
-          </button>
-          <button type="button" onClick={() => handleShippingMethodChange("store_pickup")}
-            className={`py-3.5 text-sm font-bold flex items-center justify-center gap-2 transition-all ${shippingMethod === "store_pickup" ? "bg-primary text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-            <Store size={16} /> Store Pickup
-          </button>
-        </div>
-
-        {!isPickup && (
-          <div className="space-y-4">
-            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4 shadow-sm">
-              <div>
-                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">Search Your Address</label>
-                <div className="relative mt-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
-                  <Autocomplete
-                    onLoad={(ac) => (autocompleteRef.current = ac)}
-                    onPlaceChanged={onPlaceChanged}
-                    options={{ componentRestrictions: { country: ["in", "gb"] } }}
-                  >
-                    <input
-                      type="text"
-                      placeholder="Enter first line of the address"
-                      onChange={(e) => {
-                        setSearchInput(e.target.value);
-                        if (!e.target.value) { setCoords(null); setDeliveryStatus(null); }
-                      }}
-                      className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-sm outline-none focus:border-black"
-                    />
-                  </Autocomplete>
-                </div>
+        <div className="space-y-4">
+          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4 shadow-sm">
+            <div>
+              <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">Search Your Address</label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
+                <Autocomplete
+                  onLoad={(ac) => (autocompleteRef.current = ac)}
+                  onPlaceChanged={onPlaceChanged}
+                  options={{ componentRestrictions: { country: ["in"] } }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Enter street address or pincode"
+                    onChange={(e) => {
+                      setSearchInput(e.target.value);
+                      if (!e.target.value) { setCoords(null); setDeliveryStatus(null); }
+                    }}
+                    className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-sm outline-none focus:border-black"
+                  />
+                </Autocomplete>
               </div>
-              <button type="button" onClick={handleVerifyDelivery} disabled={checkingLocation || !searchInput.trim()}
-                className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${!searchInput.trim() || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90"}`}>
-                {checkingLocation ? <Loader2 size={16} className="animate-spin" /> : <Truck size={18} />}
-                {checkingLocation ? "Checking Coverage..." : "Verify Delivery Coverage"}
-              </button>
-              {deliveryStatus && (
-                <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
-                  {deliveryStatus.available ? <CheckCircle size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
-                  <span>{deliveryStatus.message}</span>
-                </div>
-              )}
             </div>
+            <button type="button" onClick={handleVerifyDelivery} disabled={checkingLocation || !searchInput.trim()}
+              className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${!searchInput.trim() || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90"}`}>
+              {checkingLocation ? <Loader2 size={16} className="animate-spin" /> : <Truck size={18} />}
+              {checkingLocation ? "Checking Coverage..." : "Verify Delivery Coverage"}
+            </button>
+            {deliveryStatus && (
+              <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                {deliveryStatus.available ? <CheckCircle size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
+                <span>{deliveryStatus.message}</span>
+              </div>
+            )}
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <input name="fullName" placeholder="Full name *" value={form.fullName} onChange={handleChange} onBlur={handleBlur} className={inputClass("fullName")} />
-                <FieldError msg={touched.fullName && errors.fullName} />
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-500 font-bold text-sm">+91</span>
-                <input name="phone" type="tel" placeholder="Phone number *" value={form.phone} onChange={handleChange} onBlur={handleBlur} className={`${inputClass("phone")} pl-12`} />
-                <FieldError msg={touched.phone && errors.phone} />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <input name="fullName" placeholder="Full name *" value={form.fullName} onChange={handleChange} onBlur={handleBlur} className={inputClass("fullName")} />
+              <FieldError msg={touched.fullName && errors.fullName} />
+            </div>
+            <div className="relative">
+              <span className="absolute left-3 top-3.5 text-gray-500 font-bold text-sm">+91</span>
+              <input name="phone" type="tel" placeholder="Phone number *" value={form.phone} onChange={handleChange} onBlur={handleBlur} className={`${inputClass("phone")} pl-12`} />
+              <FieldError msg={touched.phone && errors.phone} />
+            </div>
+          </div>
+          <div>
+            <input name="address" placeholder="Flat/House number and street *" value={form.address} onChange={handleChange} onBlur={handleBlur} className={inputClass("address")} />
+            <FieldError msg={touched.address && errors.address} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <input name="city" placeholder="City *" value={form.city} onChange={handleChange} onBlur={handleBlur} className={inputClass("city")} />
+              <FieldError msg={touched.city && errors.city} />
             </div>
             <div>
-              <input name="address" placeholder="Flat/House number and street *" value={form.address} onChange={handleChange} onBlur={handleBlur} className={inputClass("address")} />
-              <FieldError msg={touched.address && errors.address} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <input name="city" placeholder="City *" value={form.city} onChange={handleChange} onBlur={handleBlur} className={inputClass("city")} />
-                <FieldError msg={touched.city && errors.city} />
-              </div>
-              <div>
-                <input name="postalCode" placeholder="Pincode *" value={form.postalCode} onChange={handleChange} onBlur={handleBlur} className={inputClass("postalCode")} />
-                <FieldError msg={touched.postalCode && errors.postalCode} />
-              </div>
+              <input name="postalCode" placeholder="Pincode *" value={form.postalCode} onChange={handleChange} onBlur={handleBlur} className={inputClass("postalCode")} />
+              <FieldError msg={touched.postalCode && errors.postalCode} />
             </div>
           </div>
-        )}
-
-        {isPickup && (
-          <div className="space-y-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 font-medium">
-              <p className="font-bold mb-1">📍 Store Pickup Selected</p>
-              <p>Pick up directly from our store. Minimum 4 name characters required.</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div>
-                <input name="fullName" placeholder="Full name *" value={form.fullName} onChange={handleChange} onBlur={handleBlur} className={inputClass("fullName")} />
-                <FieldError msg={touched.fullName && errors.fullName} />
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-3.5 text-gray-500 font-bold text-sm">+91</span>
-                <input name="phone" type="tel" placeholder="Phone number *" value={form.phone} onChange={handleChange} onBlur={handleBlur} className={`${inputClass("phone")} pl-12`} />
-                <FieldError msg={touched.phone && errors.phone} />
-              </div>
-            </div>
-            <p className="text-xs text-gray-400 font-medium">Optional: add your address for receipt reference</p>
-            <input name="address" placeholder="Address (optional)" value={form.address} onChange={handleChange} className={`w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20`} />
-            <div className="grid grid-cols-2 gap-3">
-              <input name="city" placeholder="City (optional)" value={form.city} onChange={handleChange} className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
-              <input name="postalCode" placeholder="Pincode (optional)" value={form.postalCode} onChange={handleChange} className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20" />
-            </div>
-          </div>
-        )}
+        </div>
       </section>
 
       {/* SECTION 3: COUPON */}
@@ -499,38 +457,17 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
         )}
       </section>
 
-      {/* SECTION 4: PAYMENT */}
-      <section className="space-y-4">
-        <h3 className="text-lg font-bold text-primary flex items-center gap-2">
-          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
-          Payment Details
-        </h3>
-        <div className="border border-gray-300 rounded-xl p-5 bg-white space-y-4 shadow-sm">
-          {!clientSecret ? (
-            <>
-              {!canInitPayment && (
-                <p className="text-xs text-amber-600 font-medium flex items-center gap-1.5 bg-amber-50 p-2 rounded-md border border-amber-100">
-                  <AlertCircle size={14} />
-                  {isPickup ? "Fill contact details to proceed" : "Fill details & verify coverage to proceed"}
-                </p>
-              )}
-              <button type="button" onClick={handleInitPayment}
-                disabled={submitting || !canInitPayment}
-                className="w-full bg-black text-white py-3.5 rounded-lg font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all active:scale-[0.98]">
-                {submitting ? <Loader2 size={16} className="animate-spin" /> : "Secure Initialize Payment"}
-              </button>
-            </>
-          ) : (
-            <div className="py-2">
-                <CardElement options={{ style: { base: { fontSize: "16px", color: "#1a1a1a", "::placeholder": { color: "#aab7c4" } } } }} />
-            </div>
-          )}
-        </div>
-      </section>
-
-      <button type="submit" disabled={submitting || !clientSecret || !paymentIntentId}
-        className="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:bg-gray-400 transform active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-base uppercase tracking-wider">
-        {submitting ? <Loader2 size={20} className="animate-spin" /> : `Complete Order • ₹${total.toFixed(2)}`}
+      {/* SINGLE SUBMIT AND PAY BUTTON */}
+      <button
+        type="submit"
+        disabled={submitting}
+        className="w-full bg-primary text-white py-4 rounded-xl font-bold shadow-lg disabled:opacity-50 disabled:bg-gray-400 transform active:scale-[0.99] transition-all flex items-center justify-center gap-2 text-base"
+      >
+        {submitting ? (
+          <Loader2 size={20} className="animate-spin" />
+        ) : (
+          `Pay & Place Order • ₹${total.toFixed(2)}`
+        )}
       </button>
     </form>
   );
@@ -540,7 +477,8 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
 const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
   const discount = appliedCoupon?.discountAmount ?? 0;
   const isFreeShipping = appliedCoupon?.isFreeShipping ?? false;
-  const { subtotal, vat, shipping, total } = calcTotal(items, distanceMiles, isPickup, discount, isFreeShipping);
+  const { subtotal, shipping, total } = calcTotal(items, distanceMiles, isPickup, discount, isFreeShipping);
+  
   return (
     <div className="w-full lg:w-[380px] shrink-0 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit lg:sticky lg:top-8 lg:mt-0 mt-8">
       <h3 className="text-lg font-bold text-primary mb-6 border-b pb-4">Order Summary</h3>
@@ -563,8 +501,7 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
         })}
       </div>
       <div className="mt-8 pt-6 border-t border-gray-100 space-y-3">
-        <div className="flex justify-between text-sm text-gray-500"><span>Subtotal </span><span>₹{subtotal.toFixed(2)}</span></div>
-        {/* <div className="flex justify-between text-sm text-gray-500"><span>VAT</span><span>₹{vat.toFixed(2)}</span></div> */}
+        <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
         <div className="flex justify-between text-sm text-gray-500">
           <span>Shipping Fee</span>
           <span className={isPickup || shipping === 0 ? "text-green-600 font-bold" : "text-gray-800"}>
@@ -586,7 +523,7 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
   );
 };
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Main Guest Page Component ────────────────────────────────────────────────
 const GuestCheckoutPage = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -622,9 +559,7 @@ const GuestCheckoutPage = () => {
     <div className="bg-gray-50/50 min-h-screen lg:py-8 py-5">
       <div className="custom-container">
         <div className="flex flex-col lg:flex-row lg:gap-x-10 items-start">
-          <Elements stripe={stripePromise}>
-            <GuestCheckoutForm items={items} distanceMiles={distanceMiles} setDistanceMiles={setDistanceMiles} onShippingMethodChange={setIsPickup} onCouponApplied={setAppliedCoupon} />
-          </Elements>
+          <GuestCheckoutForm items={items} distanceMiles={distanceMiles} setDistanceMiles={setDistanceMiles} onShippingMethodChange={setIsPickup} onCouponApplied={setAppliedCoupon} />
           <OrderSummary items={items} distanceMiles={distanceMiles} isPickup={isPickup} appliedCoupon={appliedCoupon} />
         </div>
       </div>

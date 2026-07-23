@@ -10,13 +10,13 @@ import { getProfile } from "../lib/profile";
 import { api } from "../lib/api.js"; // Central API helper for making POST requests
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const libraries = ["places"];
+const libraries = ["places"];       
 
 const DELIVERY_RANGE_MILES = 10;
 const DELIVERY_RULES = {
   SP: { withinRange: 10, outsideRange: 10 },
   BB: { withinRange: 15, outsideRange: 50 },
-};
+}; 
 
 const calcDeliveryFee = (shipping_category, distanceMiles) => {
   const rule = DELIVERY_RULES[shipping_category] ?? DELIVERY_RULES.SP;

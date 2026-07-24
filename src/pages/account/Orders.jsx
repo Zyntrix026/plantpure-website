@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Search, ChevronRight, Star, Package, ShoppingBag,
-  Loader2, X, AlertTriangle, RefreshCcw, Truck, Store,
+  Loader2, X, AlertTriangle, RefreshCcw, Truck, Store, ExternalLink,
 } from "lucide-react";
 import { getMyOrders, requestCancellation } from "../../lib/order";
 import { Link } from "react-router-dom";
@@ -201,6 +201,7 @@ const Orders = () => {
             const firstItem   = order.orderItems[0];
             const canCancel   = isCancellable(order);
             const isPickup    = order.shippingMethod === "store_pickup";
+            const tracking    = order.trackingDetails;
 
             return (
               <div
@@ -231,16 +232,35 @@ const Orders = () => {
                       {isPickup ? <><Store size={9}/> Pickup</> : <><Truck size={9}/> Delivery</>}
                     </span>
                   </div>
+
                   <h3 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors line-clamp-1">
                     {firstItem?.name}
                     {order.itemCount > 1 && <span className="text-slate-400 font-medium ml-2">(+{order.itemCount - 1} more)</span>}
                   </h3>
+
                   <div className="flex items-center justify-center md:justify-start gap-3 mt-3">
                     <span className="text-xl font-extrabold text-slate-900">₹{order.totalPrice.toFixed(2)}</span>
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter bg-slate-100 px-2 py-1 rounded-lg">
                       {order.paymentMethod}
                     </span>
                   </div>
+
+                  {/* 🚚 DELHIVERY TRACKING INFO BADGE */}
+                  {tracking?.trackingNumber && (
+                    <div className="mt-3 p-2.5 bg-blue-50/70 border border-blue-100 rounded-xl inline-flex items-center gap-3 text-left">
+                      <div className="p-1.5 bg-blue-600 text-white rounded-lg">
+                        <Truck size={14} />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-extrabold text-blue-900 uppercase tracking-wide">
+                          {tracking.courierName || "Delhivery"} AWB: <span className="font-mono text-blue-600">{tracking.trackingNumber}</span>
+                        </p>
+                        <p className="text-[10px] font-semibold text-slate-500">
+                          Shipped on {new Date(tracking.shippedAt || order.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </Link>
 
                 {/* Status & Actions */}
@@ -261,12 +281,25 @@ const Orders = () => {
 
                   {/* Action buttons */}
                   <div className="flex flex-col gap-2 w-full">
-                    {order.orderStatus !== "cancelled" && order.orderStatus !== "delivered" && order.orderStatus !== "picked_up" && (
-                      <Link to={`/order-tracking?order=${order.orderNumber}`} className="w-full">
-                        <button className="w-full flex items-center justify-center gap-2 text-blue-600 text-xs font-bold hover:bg-blue-50 px-3 py-2 rounded-xl transition-all border border-blue-100">
-                          <Truck size={13} /> Track Order
-                        </button>
-                      </Link>
+                    
+                    {/* Live Direct Delhivery Track Button */}
+                    {tracking?.trackingUrl ? (
+                      <a
+                        href={tracking.trackingUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 text-white bg-blue-600 hover:bg-blue-700 text-xs font-bold px-3 py-2.5 rounded-xl transition-all shadow-md shadow-blue-100"
+                      >
+                        <Truck size={13} /> Live Track Delhivery <ExternalLink size={12} />
+                      </a>
+                    ) : (
+                      order.orderStatus !== "cancelled" && order.orderStatus !== "delivered" && order.orderStatus !== "picked_up" && (
+                        <Link to={`/order-tracking?order=${order.orderNumber}`} className="w-full">
+                          <button className="w-full flex items-center justify-center gap-2 text-blue-600 text-xs font-bold hover:bg-blue-50 px-3 py-2 rounded-xl transition-all border border-blue-100">
+                            <Truck size={13} /> Track Order
+                          </button>
+                        </Link>
+                      )
                     )}
 
                     {(order.orderStatus === "delivered" || order.orderStatus === "picked_up") && (
@@ -292,7 +325,7 @@ const Orders = () => {
                       </div>
                     )}
 
-                    {/* FIXED CONDITION: Button hidden if status is 'pending' OR 'rejected' */}
+                    {/* Cancellation Button */}
                     {canCancel && order.cancellationStatus !== "pending" && order.cancellationStatus !== "rejected" && (
                       <button
                         onClick={() => setCancelTarget(order)}

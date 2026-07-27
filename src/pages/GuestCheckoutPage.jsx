@@ -247,6 +247,8 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
         shippingAddress,
         shippingMethod,
         isGuest: true,
+        guestEmail: form.email,
+        items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || null, quantity: i.quantity, name: i.name })),
       }));
 
       const cashfree = window.Cashfree({

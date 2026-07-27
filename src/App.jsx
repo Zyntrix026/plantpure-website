@@ -83,9 +83,7 @@ export default function App() {
           <Route
             path="/orders/:id"
             element={
-              <ProtectedRoute>
                 <OrderConfirmation />
-              </ProtectedRoute>
             }
           />
           <Route

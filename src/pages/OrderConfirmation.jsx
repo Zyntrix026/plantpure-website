@@ -36,10 +36,17 @@ const OrderConfirmation = () => {
           // Cashfree redirect landing — create order first if not yet created
           const pending = sessionStorage.getItem("pendingOrder");
           if (pending) {
-            const { cfOrderId, shippingAddress, shippingMethod } = JSON.parse(pending);
+            const { cfOrderId, shippingAddress, shippingMethod, isGuest, guestEmail, items } = JSON.parse(pending);
             try {
-              await createOrderAfterPayment({ cfOrderId, shippingAddress, shippingMethod });
+              await createOrderAfterPayment({
+                cfOrderId,
+                shippingAddress,
+                shippingMethod,
+                ...(isGuest && guestEmail && { guestEmail }),
+                ...(isGuest && items && { items }),
+              });
               sessionStorage.removeItem("pendingOrder");
+              if (isGuest) localStorage.removeItem("guest_cart");
               updateCartCount(0);
             } catch (createErr) {
               // If already created (idempotency), ignore duplicate error

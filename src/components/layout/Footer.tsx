@@ -67,6 +67,7 @@ function Footer() {
                 { label: "Blogs", href: "/blogs" },
                 { label: "Products", href: "/products" },
                 { label: "Contact", href: "/contact" },
+                { label: "Customer Review", href: "/customer-review" },
               ].map((link) => (
                 <li key={link.label}>
                   <Link

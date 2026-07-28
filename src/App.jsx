@@ -29,6 +29,7 @@ import PrivacyPolicy from "./pages/PrivacyPolicy";
 import TermsOfService from "./pages/TermsOfService";
 import BlogDetails from "./pages/BlogDetails";
 import RefundPolicy from "./pages/RefundPolicy";
+import CustomerReview from "./pages/CustomerReview";
 
 const ProtectedRoute = ({ children }) => {
   return isAuthenticated() ? children : <Navigate to="/" replace />;
@@ -74,6 +75,7 @@ export default function App() {
           <Route path="/:category/:slug" element={<ProductDetail />} />
           <Route path="/products" element={<Product />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/customer-review" element={<CustomerReview />} />
           <Route path="/checklist" element={<CheckList />} />
           <Route path="/wishlist" element={<Wishlist />} />
           <Route path="/signup" element={<Signup />} />

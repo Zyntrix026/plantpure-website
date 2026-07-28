@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Star, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Star, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, Search } from "lucide-react";
 
 // Import your API function from its module
 import { getReviews } from "../lib/googleReview.js";
@@ -49,37 +49,77 @@ const CustomerReview = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Filtering & Pagination States
+  // Server-Side Query Controls
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  // Fetch reviews from API
+  // Search Debounce Handler (300ms delay)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Fetch reviews from Backend with Parameters
   const fetchReviews = useCallback(async () => {
     setIsLoading(true);
     setErrorMsg("");
 
     try {
-      const response = await getReviews();
+      // Build server request payload
+      const params = {
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+      };
+
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      if (selectedFilter !== "all") {
+        params.rating = Number(selectedFilter);
+      }
+
+      const response = await getReviews(params);
 
       if (response && response.success !== false) {
-        // Extract array from response payload
+        // Extract review list safely
         const reviewsData = Array.isArray(response)
           ? response
-          : response.data || [];
+          : response.data || response.reviews || [];
 
         setReviews(reviewsData);
 
-        // Dynamically set stats from API response or calculate on the fly
-        const total = response.totalReviews ?? reviewsData.length;
-        const avg =
-          response.averageRating ??
-          (reviewsData.length > 0
-            ? (
-                reviewsData.reduce((acc, item) => acc + (item.rating || 0), 0) /
-                reviewsData.length
-              ).toFixed(1)
-            : 0);
+        // Compute total items and total pages
+        const total =
+          response.totalReviews ??
+          response.total ??
+          response.count ??
+          reviewsData.length;
 
+        const calculatedPages =
+          response.totalPages ??
+          response.pages ??
+          (Math.ceil(total / ITEMS_PER_PAGE) || 1);
+
+        // Calculate fallback average separately to avoid combining ?? and || syntax errors
+        const fallbackAvg =
+          reviewsData.length > 0
+            ? (
+                reviewsData.reduce(
+                  (acc, item) => acc + (Number(item.rating) || 0),
+                  0
+                ) / reviewsData.length
+              ).toFixed(1)
+            : 0;
+
+        const avg = response.averageRating ?? fallbackAvg;
+
+        setTotalPages(calculatedPages);
         setStats({
           averageRating: Number(avg) || 0,
           totalReviews: total,
@@ -92,26 +132,25 @@ const CustomerReview = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentPage, debouncedSearch, selectedFilter]);
 
+  // Refetch whenever page, debounced search query, or star filter changes
   useEffect(() => {
     fetchReviews();
   }, [fetchReviews]);
 
-  // Client-Side Star Filter
-  const filteredReviews = useMemo(() => {
-    if (selectedFilter === "all") return reviews;
-    return reviews.filter((r) => r.rating === Number(selectedFilter));
-  }, [reviews, selectedFilter]);
+  // Reset to page 1 on filter or search updates
+  const handleFilterChange = (star) => {
+    setSelectedFilter(star);
+    setCurrentPage(1);
+  };
 
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredReviews.length / ITEMS_PER_PAGE) || 1;
-  const currentReviews = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredReviews.slice(start, start + ITEMS_PER_PAGE);
-  }, [currentPage, filteredReviews]);
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
 
-  // Helper: Format Date String
+  // Date Formatting Helper
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const parsed = new Date(dateStr);
@@ -124,19 +163,12 @@ const CustomerReview = () => {
         });
   };
 
-  // Helper: First Letter Avatar Placeholder
   const getInitial = (name) => (name ? name.trim().charAt(0).toUpperCase() : "?");
 
-  // Filter Reset Handler
-  const handleFilterChange = (star) => {
-    setSelectedFilter(star);
-    setCurrentPage(1);
-  };
-
   return (
-    <div className="custom-container min-h-screen py-10 px-4 max-w-7xl mx-auto bg-gray-50/50">
+    <div className="min-h-screen py-10 custom-container bg-gray-50/50">
       
-      {/* Header & Rating Breakdown Banner */}
+      {/* Header & Overall Summary */}
       <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100 mb-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
@@ -174,26 +206,42 @@ const CustomerReview = () => {
           </div>
         </div>
 
-        {/* Filter Buttons */}
-        <div className="flex flex-wrap items-center gap-2 mt-8 pt-6 border-t border-gray-100">
-          <span className="text-sm text-gray-500 font-medium mr-2">Filter by:</span>
-          {["all", "5", "4", "3", "2", "1"].map((star) => (
-            <button
-              key={star}
-              onClick={() => handleFilterChange(star)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                selectedFilter === star
-                  ? "bg-gray-900 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {star === "all" ? "All Reviews" : `${star} Stars`}
-            </button>
-          ))}
+        {/* Search Bar & Rating Filter Toolbar */}
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mt-8 pt-6 border-t border-gray-100">
+          
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search reviews by content or author..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition"
+            />
+          </div>
+
+          {/* Star Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-gray-500 font-medium mr-1">Filter:</span>
+            {["all", "5", "4", "3", "2", "1"].map((star) => (
+              <button
+                key={star}
+                onClick={() => handleFilterChange(star)}
+                className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                  selectedFilter === star
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {star === "all" ? "All" : `${star} ★`}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Error Alert Box */}
+      {/* Error Banner */}
       {errorMsg && (
         <div className="mb-6 p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -213,10 +261,9 @@ const CustomerReview = () => {
       {/* Reviews Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
-          // Render 6 Skeleton Cards during API load
-          [...Array(6)].map((_, index) => <ReviewSkeleton key={index} />)
-        ) : currentReviews.length > 0 ? (
-          currentReviews.map((review) => {
+          [...Array(ITEMS_PER_PAGE)].map((_, index) => <ReviewSkeleton key={index} />)
+        ) : reviews.length > 0 ? (
+          reviews.map((review) => {
             const reviewId = review._id || review.id;
             return (
               <div
@@ -224,7 +271,7 @@ const CustomerReview = () => {
                 className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex flex-col justify-between hover:shadow-md transition-shadow"
               >
                 <div>
-                  {/* Customer Avatar, Name & Date */}
+                  {/* Author Header */}
                   <div className="flex items-center gap-3.5 mb-4">
                     {review.image ? (
                       <img
@@ -252,7 +299,7 @@ const CustomerReview = () => {
                     </div>
                   </div>
 
-                  {/* Star Rating */}
+                  {/* Stars */}
                   <div className="flex items-center gap-1 mb-3">
                     {[...Array(5)].map((_, index) => (
                       <Star
@@ -272,7 +319,7 @@ const CustomerReview = () => {
                   </p>
                 </div>
 
-                {/* Verified Buyer Badge */}
+                {/* Verification Badge */}
                 <div className="pt-3 border-t border-gray-50 flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   {review.isVerifiedBuyer !== false ? "Verified Buyer" : "Customer Review"}
@@ -284,17 +331,17 @@ const CustomerReview = () => {
       </div>
 
       {/* Empty State */}
-      {!isLoading && filteredReviews.length === 0 && !errorMsg && (
+      {!isLoading && reviews.length === 0 && !errorMsg && (
         <div className="text-center py-16 bg-white rounded-xl border border-gray-100">
-          <p className="text-gray-500 font-medium">No reviews found for this rating.</p>
+          <p className="text-gray-500 font-medium">No reviews match your criteria.</p>
         </div>
       )}
 
-      {/* Pagination Controls */}
+      {/* Server-Side Pagination Controls */}
       {!isLoading && totalPages > 1 && (
         <div className="flex items-center justify-between mt-10 bg-white p-4 rounded-xl border border-gray-100">
           <p className="text-sm text-gray-500">
-            Showing Page <span className="font-semibold text-gray-800">{currentPage}</span> of{" "}
+            Page <span className="font-semibold text-gray-800">{currentPage}</span> of{" "}
             <span className="font-semibold text-gray-800">{totalPages}</span>
           </p>
 
@@ -307,7 +354,7 @@ const CustomerReview = () => {
               <ChevronLeft className="w-5 h-5 text-gray-600" />
             </button>
 
-            {/* Numeric Page Buttons */}
+            {/* Pagination Page Numbers */}
             <div className="hidden sm:flex items-center gap-1">
               {[...Array(totalPages)].map((_, i) => {
                 const page = i + 1;

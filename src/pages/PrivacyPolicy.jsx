@@ -40,7 +40,7 @@ const PrivacyPolicy = () => {
               We collect information that you voluntarily provide directly to us when interacting with our brand. This includes:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-gray-500">
-              <li><strong>Personal Identifiers:</strong> Name, shipping address, billing address, phone number (+91-9810999976 or personal lines), and email address.</li>
+              <li><strong>Personal Identifiers:</strong> Name, shipping address, billing address, phone number (+91-9625982035 or personal lines), and email address.</li>
               <li><strong>Transactional Data:</strong> Details about payments and the specific natural kits, oils, or hair coloring items purchased.</li>
               <li><strong>Communication Records:</strong> Any data, messages, or text entered via our "Get in Touch With Us" forms or direct email inquiries (<span className="text-emerald-600">indiacraftworld@gmail.com</span>).</li>
             </ul>
@@ -103,7 +103,7 @@ const PrivacyPolicy = () => {
             <div className="bg-[#faf9f6] p-4 rounded-xl border border-gray-100 inline-block space-y-1">
               <p className="font-bold text-sm">PlantPure Data Protection Office</p>
               <p className="text-xs text-gray-500">Email: <a href="mailto:indiacraftworld@gmail.com" className="text-emerald-600 hover:underline">indiacraftworld@gmail.com</a></p>
-              <p className="text-xs text-gray-500">Phone: <a href="tel:+919810999976" className="text-emerald-600 hover:underline">+91-9810999976</a></p>
+              <p className="text-xs text-gray-500">Phone: <a href="tel:+919625982035" className="text-emerald-600 hover:underline">+91-9625982035</a></p>
             </div>
           </section>
 

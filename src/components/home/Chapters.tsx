@@ -30,9 +30,9 @@ function Chapters() {
             delay={idx + 1}
             className="border-l-2 border-[var(--sage)]/30 pl-6"
           >
-            <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--terracotta)]">
+            {/* <div className="text-[10px] font-semibold uppercase tracking-[0.3em] text-[var(--terracotta)]">
               Chapter {c.num}
-            </div>
+            </div> */}
             <h3 className="mt-3 font-serif text-2xl italic leading-tight md:text-3xl">
               {c.title}
             </h3>

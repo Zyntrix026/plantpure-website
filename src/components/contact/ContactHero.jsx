@@ -14,7 +14,8 @@ const ContactHero = () => {
             Get in Touch With Us
           </h1>
           <p className="text-sm sm:text-base text-gray-500">
-            PlantPure is your source for a healthy way of living. We welcome you at our facility at any time!
+            PlantPure is your source for a healthy way of living. We welcome you
+            at our facility at any time!
           </p>
         </div>
 
@@ -25,9 +26,14 @@ const ContactHero = () => {
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
               <Phone size={20} />
             </div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Call Us Today</h3>
-            <a href="tel:+919810999976" className="text-base sm:text-lg font-bold text-[#253D4E] hover:text-emerald-600 transition-colors">
-              +91-9810999976
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+              Call Us Today
+            </h3>
+            <a
+              href="tel:+919625982035"
+              className="text-base sm:text-lg font-bold text-[#253D4E] hover:text-emerald-600 transition-colors"
+            >
+              +91-9625982035
             </a>
           </div>
 
@@ -36,8 +42,13 @@ const ContactHero = () => {
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
               <Mail size={20} />
             </div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Email Address</h3>
-            <a href="mailto:indiacraftworld@gmail.com" className="text-base sm:text-lg font-bold text-[#253D4E] hover:text-emerald-600 transition-colors truncate max-w-full">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+              Email Address
+            </h3>
+            <a
+              href="mailto:indiacraftworld@gmail.com"
+              className="text-base sm:text-lg font-bold text-[#253D4E] hover:text-emerald-600 transition-colors truncate max-w-full"
+            >
               indiacraftworld@gmail.com
             </a>
           </div>
@@ -47,10 +58,10 @@ const ContactHero = () => {
             <div className="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
               <MapPin size={20} />
             </div>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Our Facility</h3>
-            <p className="text-sm font-bold text-[#253D4E]">
-              Delhi NCR, India
-            </p>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
+              Our Facility
+            </h3>
+            <p className="text-sm font-bold text-[#253D4E]">Delhi NCR, India</p>
           </div>
         </div>
       </div>

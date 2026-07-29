@@ -39,9 +39,9 @@ function Glossary() {
           ref={headRef}
           className="reveal-on-scroll mb-16 text-center md:mb-24"
         >
-          <span className="inline-block text-[11px] font-bold uppercase italic tracking-[0.35em] text-[var(--terracotta)]">
+          {/* <span className="inline-block text-[11px] font-bold uppercase italic tracking-[0.35em] text-[var(--terracotta)]">
             Chapter 08 — The Botanicals
-          </span>
+          </span> */}
           <h2 className="mt-4 font-serif text-4xl font-normal tracking-tight text-[var(--cream)] sm:text-5xl md:text-6xl">
             The PlantPure Glossary
           </h2>

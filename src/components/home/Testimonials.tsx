@@ -37,9 +37,9 @@ function Testimonials() {
       <div className="absolute left-1/2 top-1/2 -z-10 size-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--terracotta)]/5 blur-3xl" />
 
       <div className="mx-auto max-w-4xl text-center">
-        <span className="inline-block text-[11px] font-semibold uppercase italic tracking-[0.3em] text-[var(--terracotta)]">
+        {/* <span className="inline-block text-[11px] font-semibold uppercase italic tracking-[0.3em] text-[var(--terracotta)]">
           Chapter 07 — The Voices
-        </span>
+        </span> */}
 
         {/* Dynamic Frame Height Container */}
         <div className="relative mt-8 min-h-[220px] sm:min-h-[160px] md:min-h-[180px]">

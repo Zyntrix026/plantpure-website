@@ -97,15 +97,7 @@ const AboutContent = () => {
                 By offering chemical-free, plant-based hair color and care, PlantPure helps people across India embrace custom rituals that are good for their skin, hair, and surroundings.
               </p>
               
-              {/* Bottom Decorative Image */}
-              <div className="hidden lg:block  rounded-2xl overflow-hidden shadow-sm mt-4 bg-gray-100">
-                <img 
-                  src="https://plantpure.in/wp-content/uploads/2025/10/locally-sourced.jpg" 
-                  alt="Organic Ingredients" 
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </div>
+              
             </div>
 
             <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">

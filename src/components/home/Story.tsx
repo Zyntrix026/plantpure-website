@@ -25,9 +25,9 @@ function Story() {
           </div>
         </div>
         <div className="space-y-7">
-          <span className="text-[11px] font-semibold uppercase italic tracking-[0.3em] text-[var(--sage)]">
+          {/* <span className="text-[11px] font-semibold uppercase italic tracking-[0.3em] text-[var(--sage)]">
             Chapter 05 — The Promise
-          </span>
+          </span> */}
           <h2 className="font-serif text-4xl italic leading-tight md:text-5xl">
             No PPD. No ammonia. No compromise.
           </h2>

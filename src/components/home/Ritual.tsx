@@ -36,9 +36,9 @@ function Ritual() {
       <div className="relative mx-auto max-w-7xl">
         {/* Heading */}
         <div className="mx-auto mb-24 max-w-3xl text-center">
-          <span className="text-xs font-semibold uppercase tracking-[0.4em] text-[var(--terracotta)]">
+          {/* <span className="text-xs font-semibold uppercase tracking-[0.4em] text-[var(--terracotta)]">
             Chapter 06 — The Ritual
-          </span>
+          </span> */}
 
           <h2 className="mt-6 font-serif text-5xl leading-tight md:text-7xl">
             Three botanical steps.

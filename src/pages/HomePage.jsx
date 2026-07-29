@@ -53,7 +53,7 @@ export default function HomePage() {
         {/* Fix: Added full domain URL */}
       </Helmet>
       <div className="min-h-screen bg-white text-foreground">
-        <ChapterNav />
+        {/* <ChapterNav /> */}
         <Hero />
         <Marquee />
         <Chapters />

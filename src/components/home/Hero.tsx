@@ -1,6 +1,6 @@
 import React from "react";
 import { Leaf } from "lucide-react";
-import hibiscusVideoAsset from "../../assets/about.mp4";
+import hibiscusVideoAsset from "../../assets/Hero.mp4";
 
 function Hero() {
   return (

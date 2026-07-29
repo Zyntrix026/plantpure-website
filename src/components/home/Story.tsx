@@ -1,4 +1,4 @@
-import hibiscusVideoAsset from "../../assets/Hero.mp4";
+import hibiscusVideoAsset from "../../assets/about.mp4";
 function Story() {
   return (
     <section

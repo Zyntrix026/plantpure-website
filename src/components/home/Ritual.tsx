@@ -4,23 +4,24 @@ function Ritual() {
   const steps = [
     {
       n: "I",
-      title: "Henna Powder – 100gm",
-      sub: "",
-      body: "Triple Filtered Henna Powder is a traditional Ayurvedic ingredient that naturally conditions hair, enhances texture and shine, and helps maintain a healthy scalp with its antifungal and antibacterial properties, supporting stronger and healthier hair growth.",
+      title: "Henna Powder – 100g",
+      sub: "Scalp conditioning & shine",
+      body: "Triple filtered Henna powder is a traditional Ayurvedic ingredient that naturally conditions hair, enhances texture and shine, and helps maintain a healthy scalp with its antifungal and antibacterial properties, supporting stronger and healthier hair growth.",
     },
     {
       n: "II",
-      title: "Indigo Powder – 100gm",
-      sub: "",
-      body: "Helps provide rich natural color and effective grey coverage without chemical dyes. It enhances the appearance of thicker, fuller and more voluminous hair.",
+      title: "Indigo Powder – 100g",
+      sub: "Natural color & volume",
+      body: "Helps provide rich natural color and effective grey coverage without chemical dyes, while enhancing the appearance of thicker, fuller, and more voluminous hair.",
     },
     {
       n: "III",
       title: "Hibiscus Oil – 30ml",
-      sub: "",
-      body: "Made with Hibiscus Flower Extract, Black Sesame Seed Oil, Fenugreek Seed Extract and Rose Oil. It deeply nourishes the scalp and hair while improving softness, shine and manageability.",
+      sub: "Deep nourishment & softness",
+      body: "Formulated with hibiscus flower extract, black sesame seed oil, fenugreek seed extract, and rose oil. It deeply nourishes the scalp and hair while improving softness, natural shine, and manageability.",
     },
   ];
+
   return (
     <section
       id="ritual"
@@ -40,15 +41,15 @@ function Ritual() {
           </span>
 
           <h2 className="mt-6 font-serif text-5xl leading-tight md:text-7xl">
-            Three Powders.
+            Three botanical steps.
             <br />
             <span className="italic text-[var(--sage)]">
-              One Ancient Ritual.
+              One ancient ritual.
             </span>
           </h2>
 
           <p className="mt-6 text-lg leading-relaxed text-foreground/60">
-            A botanical ritual crafted from nature's most powerful ingredients.
+            A botanical ritual crafted thoughtfully from nature's most effective ingredients.
           </p>
         </div>
 
@@ -80,9 +81,11 @@ function Ritual() {
                   {s.title}
                 </h3>
 
-                <p className="mt-2 text-xs uppercase tracking-[0.25em] text-[var(--terracotta)]">
-                  {s.sub}
-                </p>
+                {s.sub && (
+                  <p className="mt-2 text-xs uppercase tracking-[0.25em] text-[var(--terracotta)]">
+                    {s.sub}
+                  </p>
+                )}
 
                 <div className="mt-8 h-px w-full bg-gradient-to-r from-[var(--sage)]/40 to-transparent" />
 
@@ -97,4 +100,5 @@ function Ritual() {
     </section>
   );
 }
+
 export default Ritual;

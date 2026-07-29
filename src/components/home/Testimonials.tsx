@@ -1,9 +1,10 @@
 import React from "react";
+
 function Testimonials() {
   const TESTIMONIALS = [
     {
       quote:
-        "I had given up on natural colour — until PlantPure. Three weeks in, my greys are gone, my scalp stopped itching, and my hair feels twice as thick. I'm never going back to a salon.",
+        "I had given up on natural color — until PlantPure. Three weeks in, my greys are gone, my scalp stopped itching, and my hair feels twice as thick. I'm never going back to a salon.",
       author: "Priya R., verified customer",
     },
     {
@@ -18,22 +19,21 @@ function Testimonials() {
     },
   ];
 
-  // Paste this line inside your component before the return statement:
   const [activeIndex, setActiveIndex] = React.useState(0);
 
   React.useEffect(() => {
     const interval = setInterval(() => {
       setActiveIndex((current) => (current + 1) % TESTIMONIALS.length);
-    }, 5000); // Transitions to the next slide every 5 seconds
+    }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [TESTIMONIALS.length]);
 
   return (
     <section
       id="testimonial"
       className="relative overflow-hidden bg-[var(--terracotta)]/10 px-5 py-24 md:px-8 md:py-32"
     >
-      {/* Background aesthetic decorative element */}
+      {/* Background Aesthetic Decorative Element */}
       <div className="absolute left-1/2 top-1/2 -z-10 size-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--terracotta)]/5 blur-3xl" />
 
       <div className="mx-auto max-w-4xl text-center">
@@ -41,7 +41,7 @@ function Testimonials() {
           Chapter 07 — The Voices
         </span>
 
-        {/* Dynamic Frame Height Container to minimize layout shift */}
+        {/* Dynamic Frame Height Container */}
         <div className="relative mt-8 min-h-[220px] sm:min-h-[160px] md:min-h-[180px]">
           {TESTIMONIALS.map((t, idx) => (
             <div
@@ -63,18 +63,18 @@ function Testimonials() {
           ))}
         </div>
 
-        {/* Compact Pagination Navigation Indicators */}
+        {/* Pagination Indicators */}
         <div className="mt-12 flex items-center justify-center gap-2.5">
           {TESTIMONIALS.map((_, idx) => (
             <button
               key={idx}
               onClick={() => setActiveIndex(idx)}
-              className={`h-1.5 transition-all duration-500 rounded-full ${
+              className={`h-1.5 rounded-full transition-all duration-500 ${
                 idx === activeIndex
                   ? "w-6 bg-[var(--terracotta)]"
-                  : "w-1.5 bg-[var(--terracotta)]/30 hover:bg-[var(--sage)] hover:text-[var(--forest-deep)]/60"
+                  : "w-1.5 bg-[var(--terracotta)]/30 hover:bg-[var(--sage)]"
               }`}
-              aria-label={`Go to testimonial ${idx + 1}`}
+              aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
         </div>
@@ -82,4 +82,5 @@ function Testimonials() {
     </section>
   );
 }
+
 export default Testimonials;

@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog";
 import { INGREDIENTS } from "../../data/ingredients";
+
 type Ingredient = {
   id: string;
   name: string;
@@ -22,6 +23,7 @@ type Ingredient = {
 function Glossary() {
   const [active, setActive] = useState<Ingredient | null>(null);
   const headRef = useReveal<HTMLDivElement>();
+
   return (
     <section
       id="glossary"
@@ -45,8 +47,8 @@ function Glossary() {
           </h2>
           <div className="mx-auto mt-6 h-[1px] w-12 bg-[var(--sage)]/40" />
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[var(--cream)]/70">
-            Every leaf, root and seed we use — with its origin and its purpose.
-            Tap a card for the full story.
+            Every leaf, root, and seed we use — with its natural origin and purpose. 
+            Tap any card for the complete story.
           </p>
         </div>
 
@@ -67,7 +69,7 @@ function Glossary() {
               <div>
                 {/* Card Top Row */}
                 <div className="flex items-center justify-between">
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-[var(--sage)]/10 text-[var(--sage)] transition-all duration-300 group-hover:bg-[var(--sage)]/20 group-hover:scale-110">
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-[var(--sage)]/10 text-[var(--sage)] transition-all duration-300 group-hover:scale-110 group-hover:bg-[var(--sage)]/20">
                     <Leaf className="size-5" strokeWidth={1.5} />
                   </div>
                   <span className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400 transition-colors group-hover:text-[var(--terracotta)]">

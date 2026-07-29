@@ -195,13 +195,7 @@ const BlogDetails = () => {
       {/* Dynamic HTML Content Container */}
       <div
         className="
-          prose prose-lg max-w-none 
-          prose-headings:font-bold prose-headings:!text-black 
-          prose-p:!text-black prose-p:leading-relaxed 
-          prose-li:!text-black prose-span:!text-black 
-          prose-strong:!text-black prose-a:text-emerald-600 
-          hover:prose-a:underline prose-img:rounded-xl
-          [&_*]:!bg-transparent [&_*]:!text-black
+         article-content mb-10 !font-['Plus Jakarta Sans']
         "
         dangerouslySetInnerHTML={{ __html: blog.content }}
       />

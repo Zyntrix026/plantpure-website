@@ -32,13 +32,24 @@ const calcCartDeliveryFee = (items, distanceMiles) => {
   return Math.max(...categories.map((cat) => calcDeliveryFee(cat, distanceMiles)));
 };
 
+const getItemPrice = (item) => {
+  // prices object from backend getCart API
+  const inclDisc = item.prices?.includeVat?.discount;
+  const inclBase = item.prices?.includeVat?.base;
+  const exclDisc = item.prices?.excludeVat?.discount;
+  const exclBase = item.prices?.excludeVat?.base;
+  // use first non-null, non-undefined, non-zero value
+  return (inclDisc != null && inclDisc > 0 ? inclDisc : null)
+    ?? (inclBase != null && inclBase > 0 ? inclBase : null)
+    ?? (exclDisc != null && exclDisc > 0 ? exclDisc : null)
+    ?? exclBase
+    ?? 0;
+};
+
 const calcTotal = (items, distanceMiles = null, isPickup = false, discount = 0, isFreeShipping = false) => {
   let subtotal = 0;
   items.forEach((item) => {
-    const qty = item.quantity || 0;
-    // Always use includeVat price — matches backend priceAtPurchase (base + vat)
-    const price = item.prices?.includeVat?.discount ?? item.prices?.includeVat?.base ?? item.prices?.excludeVat?.discount ?? item.prices?.excludeVat?.base ?? 0;
-    subtotal += price * qty;
+    subtotal += getItemPrice(item) * (item.quantity || 0);
   });
   const calculatedShipping = calcCartDeliveryFee(items, distanceMiles);
   const shipping = (isPickup || isFreeShipping) ? 0 : (calculatedShipping ?? 0);
@@ -475,17 +486,13 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
   const discount = appliedCoupon?.discountAmount ?? 0;
   const isFreeShipping = appliedCoupon?.isFreeShipping ?? false;
   const { subtotal, shipping, total } = calcTotal(items, distanceMiles, isPickup, discount, isFreeShipping);
-  const { isVatInc } = useCart();
 
   return (
     <div className="w-full lg:w-[380px] shrink-0 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit lg:sticky lg:top-8 lg:mt-0 mt-8">
       <h3 className="text-lg font-bold text-primary mb-6 border-b pb-4">Items in Cart</h3>
       <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar py-3">
         {items.map((item) => {
-          const activePrices = isVatInc ? item.prices?.includeVat : item.prices?.excludeVat;
-          const price = activePrices?.discount || activePrices?.base ||
-            item.prices?.includeVat?.discount || item.prices?.includeVat?.base ||
-            item.prices?.excludeVat?.discount || item.prices?.excludeVat?.base || 0;
+          const price = getItemPrice(item);
           return (
             <div key={item._id} className="flex gap-4 items-center">
               <div className="relative shrink-0 border border-gray-100 rounded-lg p-1">

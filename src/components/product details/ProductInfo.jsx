@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ShoppingCart, Heart, Loader2, CheckCircle2, AlertCircle, Plus, Minus, ChevronDown } from "lucide-react";
-import { FaStar, FaRegStar, FaStarHalfAlt, FaHeart } from "react-icons/fa";
+import { FaStar, FaStarHalfAlt, FaHeart } from "react-icons/fa";
 import { addToCart, getCart, removeProductFromCart } from "../../lib/cart";
 import { toggleWishlist, getWishlist } from "../../lib/wishlist";
 import { isAuthenticated } from "../../lib/auth";
@@ -12,6 +13,7 @@ import { useCart } from "../../context/CartContext";
 const applyVat = (price, vat) => Number((price + (price * vat) / 100).toFixed(2));
 
 const ProductInfo = ({ product }) => {
+  const navigate = useNavigate();
   const [adding, setAdding] = useState(false);
   const [updatingId, setUpdatingId] = useState(null);
   const [wishlistLoading, setWishlistLoading] = useState(false);
@@ -19,6 +21,9 @@ const ProductInfo = ({ product }) => {
   const [cartItems, setCartItems] = useState([]);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const { updateCartCount, isVatInc } = useCart();
+
+  // Stable random review count (6 to 9) generated once per mount for zero-review products
+  const [randomReviews] = useState(() => Math.floor(Math.random() * 4) + 6);
 
   // Auto-select first variant if product has variants
   useEffect(() => {
@@ -212,18 +217,26 @@ const ProductInfo = ({ product }) => {
     }
   };
 
+  // Safe Extraction of DB Attributes
+  const realAvgRating = product.ratings?.average || 0;
+  const totalReviews = product.ratings?.count || 0;
+  const isZeroReviews = totalReviews === 0;
+
+  // Fallback Values: 0 Reviews honge toh 5.0 Rating + Full Colored Stars
+  const displayRating = isZeroReviews ? 5 : realAvgRating;
+  const displayReviewCount = isZeroReviews ? randomReviews : totalReviews;
+
   // Dynamic Star Renderer Engine
-  const renderStars = (averageRating) => {
+  const renderStars = (rating) => {
     const stars = [];
-    const rating = averageRating || 0;
-    
     for (let i = 1; i <= 5; i++) {
       if (i <= rating) {
         stars.push(<FaStar key={i} size={14} className="text-[#f3dd70]" />);
       } else if (i - 0.5 <= rating) {
         stars.push(<FaStarHalfAlt key={i} size={14} className="text-[#f3dd70]" />);
       } else {
-        stars.push(<FaRegStar key={i} size={14} className="text-gray-300" />);
+        // FaStar with light grey fill so internal body is colored, not transparent
+        stars.push(<FaStar key={i} size={14} className="text-gray-200" />);
       }
     }
     return stars;
@@ -255,10 +268,6 @@ const ProductInfo = ({ product }) => {
     secondaryDisplayPrice = oppositePrice?.discount || oppositePrice?.base;
   }
 
-  // Safe Extraction of DB Attributes
-  const avgRating = product.ratings?.average || 0;
-  const totalReviews = product.ratings?.count || 0;
-
   return (
     <div className="flex-1 font-['Quicksand']">
       <div className="flex items-center gap-3 mb-3">
@@ -275,12 +284,16 @@ const ProductInfo = ({ product }) => {
       <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#253D4E] leading-tight">{product.title}</h1>
 
       {/* Dynamic Star Ratings block nodes */}
-      <div className="flex items-center gap-2 mt-3">
+      <div
+        onClick={() => navigate("/customer-review")}
+        className="flex items-center gap-2 mt-3 cursor-pointer hover:opacity-80 transition-opacity w-fit select-none"
+        title="Click to view reviews"
+      >
         <div className="flex items-center gap-0.5">
-          {renderStars(avgRating)}
+          {renderStars(displayRating)}
         </div>
         <span className="text-xs text-gray-500 font-semibold bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
-          ({avgRating > 0 ? avgRating.toFixed(1) : "0.0"} Rating • {totalReviews} {totalReviews === 1 ? "Review" : "Reviews"})
+          ({displayRating.toFixed(1)} Rating • {displayReviewCount} {displayReviewCount === 1 ? "Review" : "Reviews"})
         </span>
       </div>
 
@@ -327,19 +340,9 @@ const ProductInfo = ({ product }) => {
         <div className="flex items-baseline gap-3">
           <span className="text-3xl sm:text-4xl font-bold text-primary">
             ₹{displayPrice}
-            {/* <span className="text-xs ml-1.5 text-gray-400 font-bold uppercase tracking-tighter">{isVatInc ? "inc vat" : "ex vat"}</span> */}
-            <span className="text-xs ml-1.5 text-gray-400 font-bold  tracking-tighter">Inc all taxes </span>
+            <span className="text-xs ml-1.5 text-gray-400 font-bold tracking-tighter">Inc all taxes </span>
           </span>
-          {/* {hasDiscount && <span className="text-lg line-through text-gray-400 font-semibold">₹{originalPrice}</span>}
-          {!product.hasVariants && product.discountPercentage && product.discountPercentage !== "0% Off" && (
-            <span className="bg-secondary/20 text-secondary text-sm font-black px-2 py-1 rounded">{product.discountPercentage}</span>
-          )} */}
         </div>
-        {/* <p className="text-[11px] text-gray-500 mt-2 font-bold flex items-center gap-1">
-          {isVatInc ? "Excl. VAT:" : "Incl. VAT:"}
-          <span className="text-primary/80">₹{secondaryDisplayPrice}</span>
-          <span className="text-[9px] px-1 bg-gray-200 rounded">@{vat}%</span>
-        </p> */}
       </div>
 
       <p className="mt-6 text-[#253D4E]/70 leading-relaxed font-medium text-[15px]">{product.excerpt}</p>
@@ -372,15 +375,13 @@ const ProductInfo = ({ product }) => {
       </div>
 
       <div className="mt-8 pt-6 border-t border-dashed border-gray-200 space-y-2">
-        <div className="grid grid-cols-2 max-w-[300px] text-[13px]">
+        <div className="grid grid-cols-2 max-w-[400px] text-[13px]">
           <span className="text-gray-500 font-bold">SKU:</span>
           <span className="text-[#253D4E] font-medium">
             {product.hasVariants && selectedVariant?.sku ? selectedVariant.sku : product.sku}
           </span>
           <span className="text-gray-500 font-bold">Brand:</span>
           <span className="text-[#253D4E] font-medium">{product.brand}</span>
-          {/* <span className="text-gray-500 font-bold">VAT Rate:</span> */}
-          {/* <span className="text-[#253D4E] font-medium text-[11px] bg-gray-100 px-1.5 py-0.5 rounded w-fit">{vat}% Standard Rate</span> */}
         </div>
       </div>
     </div>

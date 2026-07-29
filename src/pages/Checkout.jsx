@@ -10,13 +10,13 @@ import { getProfile } from "../lib/profile";
 import { api } from "../lib/api.js"; // Central API helper for making POST requests
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
-const libraries = ["places"];       
+const libraries = ["places"];
 
-const DELIVERY_RANGE_MILES = 10;
+const DELIVERY_RANGE_MILES = 16;
 const DELIVERY_RULES = {
-  SP: { withinRange: 10, outsideRange: 10 },
-  BB: { withinRange: 15, outsideRange: 50 },
-}; 
+  SP: { withinRange: 100, outsideRange: 150 },
+  BB: { withinRange: 100, outsideRange: 150 },
+};
 
 const calcDeliveryFee = (shipping_category, distanceMiles) => {
   const rule = DELIVERY_RULES[shipping_category] ?? DELIVERY_RULES.SP;
@@ -33,26 +33,17 @@ const calcCartDeliveryFee = (items, distanceMiles) => {
 };
 
 const calcTotal = (items, distanceMiles = null, isPickup = false, discount = 0, isFreeShipping = false) => {
-  let subtotalExclVat = 0;
-  let totalVat = 0;
+  let subtotal = 0;
   items.forEach((item) => {
     const qty = item.quantity || 0;
-    const exclVat = item.prices?.excludeVat;
-    const inclVat = item.prices?.includeVat;
-    const priceExcl = exclVat?.discount || exclVat?.base || 0;
-    const priceIncl = inclVat?.discount || inclVat?.base || priceExcl;
-    subtotalExclVat += priceExcl * qty;
-    totalVat += (priceIncl - priceExcl) * qty;
+    // Always use includeVat price — matches backend priceAtPurchase (base + vat)
+    const price = item.prices?.includeVat?.discount ?? item.prices?.includeVat?.base ?? item.prices?.excludeVat?.discount ?? item.prices?.excludeVat?.base ?? 0;
+    subtotal += price * qty;
   });
-  const shipping = (isPickup || isFreeShipping) ? 0 : (calcCartDeliveryFee(items, distanceMiles) ?? 0);
-  const total = Math.max(subtotalExclVat + totalVat + shipping - discount, 0);
-  return {
-    subtotal: subtotalExclVat,
-    vat: totalVat,
-    shipping,
-    discount,
-    total,
-  };
+  const calculatedShipping = calcCartDeliveryFee(items, distanceMiles);
+  const shipping = (isPickup || isFreeShipping) ? 0 : (calculatedShipping ?? 0);
+  const total = Math.max(subtotal + shipping - discount, 0);
+  return { subtotal, shipping, discount, total };
 };
 
 const CheckoutForm = ({
@@ -61,6 +52,8 @@ const CheckoutForm = ({
   setDistanceMiles,
   onShippingMethodChange,
   onCouponApplied,
+  appliedCoupon,
+  setAppliedCoupon
 }) => {
   const navigate = useNavigate();
   const { updateCartCount } = useCart();
@@ -71,7 +64,6 @@ const CheckoutForm = ({
   const [coords, setCoords] = useState(null);
   const [searchInput, setSearchInput] = useState("");
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const autocompleteRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -117,10 +109,12 @@ const CheckoutForm = ({
     const address = `${get("street_number")} ${get("route")}`.trim() || place.formatted_address;
     const city = get("postal_town") || get("locality") || get("administrative_area_level_2");
     const postalCode = get("postal_code");
+
     setForm((prev) => ({ ...prev, address, city, postalCode }));
     setSearchInput(address);
     setCoords({ lat: place.geometry.location.lat(), lng: place.geometry.location.lng() });
     setDeliveryStatus(null);
+    setDistanceMiles(null); // reset until verified
   };
 
   const handleVerifyDelivery = async () => {
@@ -132,18 +126,23 @@ const CheckoutForm = ({
     try {
       const res = await checkDelivery(coords.lat, coords.lng);
       setDeliveryStatus(res.data);
-      setDistanceMiles(res.data?.distanceMiles ?? null);
+
+      const computedDistance = res.data?.distanceKm ?? res.data?.distanceMiles ?? 0;
+      setDistanceMiles(computedDistance);
+
       if (res.data?.available && defaultAddress && !form.address) {
         setForm((prev) => ({
           ...prev,
-          address: defaultAddress.street || "",
-          city: defaultAddress.city || "",
-          postalCode: defaultAddress.zipCode || "",
+          address: defaultAddress.street || prev.address,
+          city: defaultAddress.city || prev.city,
+          postalCode: defaultAddress.zipCode || prev.postalCode,
           country: defaultAddress.country || "India",
         }));
       }
-    } catch {
+      toast.success("Delivery fee updated!");
+    } catch (err) {
       toast.error("Error verifying delivery coverage");
+      setDistanceMiles(null);
     } finally {
       setCheckingLocation(false);
     }
@@ -176,11 +175,10 @@ const CheckoutForm = ({
     return { ...form, ...coords };
   };
 
-  // FULL SINGLE-STEP PAY LOGIC
   const handleCheckoutAndPay = async (e) => {
     e.preventDefault();
 
-    if (!isPickup && !deliveryStatus?.available) {
+    if (!isPickup && (!deliveryStatus?.available || distanceMiles === null)) {
       toast.error("Please verify your delivery address first.");
       return;
     }
@@ -197,7 +195,6 @@ const CheckoutForm = ({
       setSubmitting(true);
       const shippingAddress = buildShippingAddress();
 
-      // Step 1: Create session directly when user clicks "Pay"
       const response = await api.post("/payments/create-session", {
         shippingAddress,
         shippingMethod,
@@ -210,14 +207,12 @@ const CheckoutForm = ({
 
       const { paymentSessionId, orderId: cfOrderId } = response.data.data;
 
-      // Store checkout context so OrderConfirmation can create the order after redirect
       sessionStorage.setItem("pendingOrder", JSON.stringify({
         cfOrderId,
         shippingAddress: buildShippingAddress(),
         shippingMethod,
       }));
 
-      // Step 2: Immediately open Cashfree Drop-In UI overlay
       const cashfree = window.Cashfree({
         mode: import.meta.env.PROD ? "production" : "sandbox"
       });
@@ -236,11 +231,9 @@ const CheckoutForm = ({
         }
 
         if (result.redirect) {
-          // Page will redirect — OrderConfirmation will handle order creation
           return;
         }
 
-        // In-page payment completed (non-redirect flow)
         if (result.paymentDetails) {
           await verifyAndCreateOrder(cfOrderId);
         }
@@ -281,7 +274,6 @@ const CheckoutForm = ({
 
   return (
     <form onSubmit={handleCheckoutAndPay} className="flex-1 space-y-6 w-full">
-      {/* Contact Section */}
       <button
         type="button"
         className="px-8 py-1.5 bg-primary text-white rounded-md mb-2"
@@ -289,7 +281,7 @@ const CheckoutForm = ({
       >
         Back
       </button>
-      
+
       <section className="space-y-4">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
           <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">1</span>
@@ -303,190 +295,114 @@ const CheckoutForm = ({
           value={form.email}
           readOnly
           onChange={handleChange}
-          className="w-full border border-gray-300 rounded-lg p-3.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+          className="w-full border border-gray-300 rounded-lg p-3.5 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all bg-gray-50"
         />
       </section>
 
-      {/* Shipping Section */}
       <section className="space-y-4">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
           <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">2</span>
           Shipping Method
         </h3>
-        
-        {/* HIDDEN / COMMENTED OUT STORE PICKUP SWITCHER TABS */}
-        {/* 
-        <div className="grid grid-cols-2 border border-gray-300 rounded-xl overflow-hidden bg-white shadow-sm">
-          <button
-            type="button"
-            onClick={() => handleShippingMethodChange("delivery")}
-            className={`py-3.5 text-sm font-bold flex items-center justify-center gap-2 transition-all ${shippingMethod === "delivery" ? "bg-primary text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-          >
-            <Truck size={16} /> Home Delivery
-          </button>
-          <button
-            type="button"
-            onClick={() => handleShippingMethodChange("store_pickup")}
-            className={`py-3.5 text-sm font-bold flex items-center justify-center gap-2 transition-all ${shippingMethod === "store_pickup" ? "bg-primary text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
-          >
-            <Store size={16} /> Store Pickup
-          </button>
-        </div>
-        */}
 
-        {/* HIDDEN / COMMENTED OUT STORE ADDRESS NOTIFICATION PANEL */}
-        {/* 
-        {isPickup ? (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-700 font-medium">
-            <p className="font-bold mb-1">📍 Store Address</p>
-            <p>You can pick up your order directly from our store. Payment is required online to confirm your order.</p>
-          </div>
-        ) : (
-        */}
-          <div className="space-y-4">
-            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4 shadow-sm">
-              <div className="relative">
-                <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">Search Your Address</label>
-                <div className="relative mt-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
-                  <Autocomplete
-                    onLoad={(ac) => (autocompleteRef.current = ac)}
-                    onPlaceChanged={onPlaceChanged}
-                    options={{ componentRestrictions: { country: ["in"] } }}
-                  >
-                    <input
-                      type="text"
-                      placeholder="Enter address details"
-                      onChange={(e) => {
-                        setSearchInput(e.target.value);
-                        if (!e.target.value) { setCoords(null); setDeliveryStatus(null); }
-                      }}
-                      className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-sm outline-none focus:border-black"
-                    />
-                  </Autocomplete>
-                </div>
+        <div className="space-y-4">
+          <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/50 space-y-4 shadow-sm">
+            <div className="relative">
+              <label className="text-[11px] font-bold text-gray-500 uppercase ml-1">Search Your Address</label>
+              <div className="relative mt-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10" size={16} />
+                <Autocomplete
+                  onLoad={(ac) => (autocompleteRef.current = ac)}
+                  onPlaceChanged={onPlaceChanged}
+                  options={{ componentRestrictions: { country: ["in"] } }}
+                >
+                  <input
+                    type="text"
+                    placeholder="Enter address details"
+                    value={searchInput}
+                    onChange={(e) => {
+                      setSearchInput(e.target.value);
+                      if (!e.target.value) { 
+                        setCoords(null); 
+                        setDeliveryStatus(null); 
+                        setDistanceMiles(null);
+                      }
+                    }}
+                    className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-sm outline-none focus:border-black bg-white"
+                  />
+                </Autocomplete>
               </div>
-              <button
-                type="button"
-                onClick={handleVerifyDelivery}
-                disabled={checkingLocation || !searchInput.trim()}
-                className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${!searchInput.trim() || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90 active:scale-[0.98]"}`}
-              >
-                {checkingLocation ? <Loader2 size={16} className="animate-spin" /> : <Truck size={18} />}
-                {checkingLocation ? "Checking Coverage..." : "Verify Delivery Coverage"}
-              </button>
-              {deliveryStatus && (
-                <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
-                  {deliveryStatus.available ? <CheckCircle size={18} className="shrink-0" /> : <Truck size={18} className="shrink-0" />}
-                  <span>{deliveryStatus.message}</span>
-                </div>
-              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                name="fullName"
-                placeholder="Full name *"
-                required
-                value={form.fullName}
-                onChange={handleChange}
-                readOnly
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-              <input
-                name="phone"
-                placeholder="Phone number *"
-                required
-                value={form.phone}
-                readOnly
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-            </div>
-            <input
-              name="address"
-              placeholder="Flat/House number and street *"
-              required
-              value={form.address}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                name="city"
-                placeholder="City *"
-                required
-                value={form.city}
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-              <input
-                name="postalCode"
-                placeholder="Pincode *"
-                required
-                value={form.postalCode}
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-            </div>
-          </div>
-        {/* 
-        )} 
-        */}
 
-        {/* HIDDEN / COMMENTED OUT STORE PICKUP CONDITIONAL COMPONENT FORM */}
-        {/* 
-        {isPickup && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input
-                name="fullName"
-                placeholder="Full name *"
-                required
-                value={form.fullName}
-                readOnly
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-              <input
-                name="phone"
-                placeholder="Phone number *"
-                required
-                value={form.phone}
-                readOnly
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-            </div>
-            <p className="text-xs text-gray-400 font-medium">Optional: add address context</p>
-            <input
-              name="address"
-              placeholder="Address (optional)"
-              value={form.address}
-              onChange={handleChange}
-              className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                name="city"
-                placeholder="City (optional)"
-                value={form.city}
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-              <input
-                name="postalCode"
-                placeholder="Pincode (optional)"
-                value={form.postalCode}
-                onChange={handleChange}
-                className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none"
-              />
-            </div>
+            <button
+              type="button"
+              onClick={handleVerifyDelivery}
+              disabled={checkingLocation || !searchInput.trim() || !coords}
+              className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${!searchInput.trim() || !coords || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90 active:scale-[0.98]"}`}
+            >
+              {checkingLocation ? <Loader2 size={16} className="animate-spin" /> : <Truck size={18} />}
+              {checkingLocation ? "Checking Coverage..." : "Verify Delivery Coverage"}
+            </button>
+
+            {deliveryStatus && (
+              <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+                {deliveryStatus.available ? <CheckCircle size={18} className="shrink-0" /> : <Truck size={18} className="shrink-0" />}
+                <span>{deliveryStatus.message}</span>
+              </div>
+            )}
           </div>
-        )}
-        */}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              name="fullName"
+              placeholder="Full name *"
+              required
+              value={form.fullName}
+              onChange={handleChange}
+              readOnly
+              className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none bg-gray-50"
+            />
+            <input
+              name="phone"
+              placeholder="Phone number *"
+              required
+              value={form.phone}
+              readOnly
+              onChange={handleChange}
+              className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none bg-gray-50"
+            />
+          </div>
+
+          <input
+            name="address"
+            placeholder="Flat/House number and street *"
+            required
+            value={form.address}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded-lg p-3.5 text-sm outline-none bg-white"
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              name="city"
+              placeholder="City *"
+              required
+              value={form.city}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none bg-white"
+            />
+            <input
+              name="postalCode"
+              placeholder="Pincode *"
+              required
+              value={form.postalCode}
+              onChange={handleChange}
+              className="border border-gray-300 rounded-lg p-3.5 text-sm outline-none bg-white"
+            />
+          </div>
+        </div>
       </section>
 
-      {/* Coupon Section */}
       <section className="space-y-3">
         <h3 className="text-lg font-bold text-primary flex items-center gap-2">
           <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
@@ -514,7 +430,7 @@ const CheckoutForm = ({
               placeholder="Enter coupon code"
               value={couponInput}
               onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
-              className="flex-1 border border-gray-300 rounded-lg p-3 text-sm outline-none"
+              className="flex-1 border border-gray-300 rounded-lg p-3 text-sm outline-none bg-white"
             />
             <button
               type="button"
@@ -540,7 +456,6 @@ const CheckoutForm = ({
         )}
       </section>
 
-      {/* SINGLE SUBMIT AND PAY BUTTON */}
       <button
         type="submit"
         disabled={submitting}
@@ -559,9 +474,9 @@ const CheckoutForm = ({
 const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
   const discount = appliedCoupon?.discountAmount ?? 0;
   const isFreeShipping = appliedCoupon?.isFreeShipping ?? false;
-  const { subtotal, vat, shipping, total } = calcTotal(items, distanceMiles, isPickup, discount, isFreeShipping);
+  const { subtotal, shipping, total } = calcTotal(items, distanceMiles, isPickup, discount, isFreeShipping);
   const { isVatInc } = useCart();
-  
+
   return (
     <div className="w-full lg:w-[380px] shrink-0 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm h-fit lg:sticky lg:top-8 lg:mt-0 mt-8">
       <h3 className="text-lg font-bold text-primary mb-6 border-b pb-4">Items in Cart</h3>
@@ -593,21 +508,19 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
       </div>
       <div className="mt-8 pt-6 border-t border-gray-100 space-y-3">
         <div className="flex justify-between text-sm text-gray-500">
-          <span>Subtotal (Net)</span>
+          <span>Subtotal</span>
           <span>₹{subtotal.toFixed(2)}</span>
         </div>
         <div className="flex justify-between text-sm text-gray-500">
           <span>Shipping</span>
-          <span className={isPickup || shipping === 0 ? "text-green-600 font-bold" : "text-gray-800"}>
+          <span className={isPickup || isFreeShipping || (shipping === 0 && distanceMiles !== null) ? "text-green-600 font-bold" : "text-gray-800 font-semibold"}>
             {isPickup
               ? "FREE (Store Pickup)"
               : isFreeShipping
                 ? "FREE (Coupon)"
                 : distanceMiles === null
-                  ? "Calculated after address"
-                  : shipping === 0
-                    ? "FREE"
-                    : `₹${shipping.toFixed(2)}`}
+                  ? <span className="text-orange-500 font-semibold">Calculated after address</span>
+                  : `₹${shipping.toFixed(2)}`}
           </span>
         </div>
         {discount > 0 && (
@@ -659,6 +572,8 @@ const CheckoutPage = () => {
             setDistanceMiles={setDistanceMiles}
             onShippingMethodChange={setIsPickup}
             onCouponApplied={setAppliedCoupon}
+            appliedCoupon={appliedCoupon}
+            setAppliedCoupon={setAppliedCoupon}
           />
           <OrderSummary
             items={items}

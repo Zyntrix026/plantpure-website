@@ -15,21 +15,21 @@ const BlogSkeleton = () => {
   return (
     <div className="bg-white rounded-2xl overflow-hidden border-2 border-gray-100 flex flex-col animate-pulse">
       <div className="h-48 sm:h-56 bg-gray-200 w-full" />
-      
+
       <div className="p-5 sm:p-6 flex flex-col flex-grow">
         <div className="flex gap-4 mb-4">
           <div className="h-3 bg-gray-200 rounded w-16" />
           <div className="h-3 bg-gray-200 rounded w-16" />
           <div className="h-3 bg-gray-200 rounded w-16" />
         </div>
-        
+
         <div className="h-5 bg-gray-200 rounded w-5/6 mb-2" />
         <div className="h-5 bg-gray-200 rounded w-2/3 mb-4" />
-        
+
         <div className="h-3 bg-gray-200 rounded w-full mb-2" />
         <div className="h-3 bg-gray-200 rounded w-full mb-2" />
         <div className="h-3 bg-gray-200 rounded w-4/5 mb-6" />
-        
+
         <div className="mt-auto h-4 bg-gray-200 rounded w-24" />
       </div>
     </div>
@@ -120,21 +120,19 @@ const BlogGrid = () => {
     <div className="py-16 bg-white">
       <div className="custom-container px-4">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          
           {/* अगर लोडिंग सच है, तो 6 स्केलेटन कार्ड्स दिखाओ, नहीं तो असली ब्लॉग लिस्ट */}
           {loading
             ? Array.from({ length: 6 }).map((_, index) => (
                 <BlogSkeleton key={index} />
               ))
             : blogs.map((blog) => {
-                const formattedDate = new Date(blog.publishedAt).toLocaleDateString(
-                  "en-US",
-                  {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  }
-                );
+                const formattedDate = new Date(
+                  blog.publishedAt,
+                ).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                });
 
                 const categoryName =
                   blog.categories && blog.categories.length > 0
@@ -142,67 +140,69 @@ const BlogGrid = () => {
                     : "General";
 
                 return (
-                  <div
-                    key={blog._id}
-                    className="group bg-white rounded-2xl overflow-hidden border-2 border-gray-100 hover:border-emerald-600/20 hover:shadow-xl transition-all duration-300 flex flex-col"
-                  >
-                    {/* Blog Image */}
-                    <div className="h-48 sm:h-56 overflow-hidden relative bg-gray-100">
-                      <span className="absolute top-4 left-4 z-10 bg-emerald-600 text-white font-bold text-[10px] sm:text-xs px-3 py-1 rounded-full shadow-sm">
-                        {categoryName}
-                      </span>
-                      <img
-                        src={blog.image?.url}
-                        alt={blog.image?.alt || blog.title}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src =
-                            "https://placehold.co/600x400/eceff1/253d4e?text=PlantPure+Hair+Care";
-                        }}
-                      />
-                    </div>
-
-                    <div className="p-5 sm:p-6 flex flex-col flex-grow">
-                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-gray-400 text-[11px] sm:text-xs font-bold mb-3">
-                        <div className="flex items-center gap-1.5">
-                          <Calendar size={13} className="text-emerald-600" />
-                          <span>{formattedDate}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <User size={13} className="text-emerald-600" />
-                          <span>{blog.author?.name || "PlantPure"}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <Clock size={13} className="text-emerald-600" />
-                          <span>{blog.readTime} min read</span>
-                        </div>
-                        {blog.views > 0 && (
-                          <div className="flex items-center gap-1.5">
-                            <Eye size={13} className="text-emerald-600" />
-                            <span>{blog.views} views</span>
-                          </div>
-                        )}
+                  <Link to={`/blogs/${blog.slug}`} key={blog._id}>
+                    <div className="group bg-white rounded-2xl overflow-hidden border-2 border-gray-100 hover:border-emerald-600/20 hover:shadow-xl transition-all duration-300 flex flex-col">
+                      {/* Blog Image */}
+                      <div className="h-48 sm:h-56 overflow-hidden relative bg-gray-100">
+                        <span className="absolute top-4 left-4 z-10 bg-emerald-600 text-white font-bold text-[10px] sm:text-xs px-3 py-1 rounded-full shadow-sm">
+                          {categoryName}
+                        </span>
+                        <img
+                          src={blog.image?.url}
+                          alt={blog.image?.alt || blog.title}
+                          loading="lazy"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src =
+                              "https://placehold.co/600x400/eceff1/253d4e?text=PlantPure+Hair+Care";
+                          }}
+                        />
                       </div>
 
-                      <h3 className="text-base sm:text-lg font-bold text-[#253D4E] leading-snug mb-3 group-hover:text-emerald-600 transition-colors line-clamp-2">
-                        {blog.title}
-                      </h3>
+                      <div className="p-5 sm:p-6 flex flex-col flex-grow">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-gray-400 text-[11px] sm:text-xs font-bold mb-3">
+                          <div className="flex items-center gap-1.5">
+                            <Calendar size={13} className="text-emerald-600" />
+                            <span>{formattedDate}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <User size={13} className="text-emerald-600" />
+                            <span>{blog.author?.name || "PlantPure"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Clock size={13} className="text-emerald-600" />
+                            <span>{blog.readTime} min read</span>
+                          </div>
+                          {blog.views > 0 && (
+                            <div className="flex items-center gap-1.5">
+                              <Eye size={13} className="text-emerald-600" />
+                              <span>{blog.views} views</span>
+                            </div>
+                          )}
+                        </div>
 
-                      <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 line-clamp-3">
-                        {blog.excerpt}
-                      </p>
+                        <h3 className="text-base sm:text-lg font-bold text-[#253D4E] leading-snug mb-3 group-hover:text-emerald-600 transition-colors line-clamp-2">
+                          {blog.title}
+                        </h3>
 
-                      <Link to={`/blogs/${blog.slug}`} className="mt-auto flex items-center gap-2 text-xs sm:text-sm font-bold text-[#253D4E] group-hover:text-emerald-600 group-hover:underline transition-all">
-                        <span>Read Article</span>
-                        <ArrowRight
-                          size={14}
-                          className="group-hover:translate-x-1 transition-transform"
-                        />
-                      </Link>
+                        <p className="text-xs sm:text-sm text-gray-500 leading-relaxed mb-6 line-clamp-3">
+                          {blog.excerpt}
+                        </p>
+
+                        <Link
+                          to={`/blogs/${blog.slug}`}
+                          className="mt-auto flex items-center gap-2 text-xs sm:text-sm font-bold text-[#253D4E] group-hover:text-emerald-600 group-hover:underline transition-all"
+                        >
+                          <span>Read Article</span>
+                          <ArrowRight
+                            size={14}
+                            className="group-hover:translate-x-1 transition-transform"
+                          />
+                        </Link>
+                      </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })}
         </div>

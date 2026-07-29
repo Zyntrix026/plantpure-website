@@ -383,7 +383,7 @@ const CheckList = () => {
                   <span>Total VAT</span><span>+₹{summary.totalVat.toFixed(2)}</span>
                 </div> */}
                 <div className="flex justify-between text-base text-gray-500 font-medium">
-                  <span>Delivery Charges</span><span className="text-green-600 uppercase font-bold">Free</span>
+                  <span>Delivery Charges</span><span className="text-orange-500 font-bold text-sm">Calculated at checkout</span>
                 </div>
                 <div className="border-t border-dashed border-gray-300 pt-4">
                   <div className="flex justify-between text-xl font-bold text-primary">

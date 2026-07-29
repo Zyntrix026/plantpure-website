@@ -1,5 +1,13 @@
 import React from "react";
-import { ArrowRight, Mail, Phone, MapPin, Instagram, Facebook, Youtube } from "lucide-react";
+import {
+  ArrowRight,
+  Mail,
+  Phone,
+  MapPin,
+  Instagram,
+  Facebook,
+  Youtube,
+} from "lucide-react";
 import { Link } from "react-router-dom";
 
 function Footer() {
@@ -13,12 +21,10 @@ function Footer() {
       </div>
 
       <div className="relative custom-container">
-        
         {/* ─── TOP SECTION: BALANCED GRID ARCHITECTURE ─── */}
         <div className="grid grid-cols-1 gap-x-12 gap-y-12 pb-16 sm:grid-cols-2 lg:grid-cols-12 items-start">
-          
           {/* COLUMN 1: BRAND IDENTIFIER (Large Span) */}
-          <div className="space-y-6 lg:col-span-5 md:pr-6">
+          <div className="space-y-6 lg:col-span-4 md:pr-6">
             <div className="inline-block">
               <img
                 src="/logo.png"
@@ -45,14 +51,16 @@ function Footer() {
 
             {/* Premium Pill Badges */}
             <div className="flex flex-wrap gap-2 pt-2">
-              {["Ammonia Free", "Botanical Blend", "Salon Inspired"].map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-full border border-white/10 bg-white/[0.02] px-4 py-1.5 text-[10px] font-bold tracking-[0.15em] uppercase text-white/90"
-                >
-                  {tag}
-                </span>
-              ))}
+              {["Ammonia Free", "Botanical Blend", "Salon Inspired"].map(
+                (tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full border border-white/10 bg-white/[0.02] px-4 py-1.5 text-[10px] font-bold tracking-[0.15em] uppercase text-white/90"
+                  >
+                    {tag}
+                  </span>
+                ),
+              )}
             </div>
           </div>
 
@@ -92,7 +100,8 @@ function Footer() {
               The Circle
             </h5>
             <p className="mb-5 text-sm leading-relaxed text-white/90 tracking-wide">
-              Subscribe to unlock early botanical updates, masterclasses, and seasonal hair wellness rituals.
+              Subscribe to unlock early botanical updates, masterclasses, and
+              seasonal hair wellness rituals.
             </p>
 
             <form
@@ -117,14 +126,28 @@ function Footer() {
             {/* Premium Minimal Social Icons Layout */}
             <div className="mt-6 flex gap-4 text-white/50">
               {[
-                { icon: <Instagram size={16} strokeWidth={1.5} />, href: "#instagram", label: "Instagram" },
-                { icon: <Facebook size={16} strokeWidth={1.5} />, href: "#facebook", label: "Facebook" },
-                { icon: <Youtube size={16} strokeWidth={1.5} />, href: "#youtube", label: "Youtube" },
+                {
+                  icon: <Instagram size={16} strokeWidth={1.5} />,
+                  href: "https://www.instagram.com/plantpure.in/",
+                  label: "Instagram",
+                },
+                {
+                  icon: <Facebook size={16} strokeWidth={1.5} />,
+                  href: "https://www.facebook.com/profile.php?id=61591496390935",
+                  label: "Facebook",
+                },
+                {
+                  icon: <Youtube size={16} strokeWidth={1.5} />,
+                  href: "https://www.youtube.com/channel/UCfMuIcNLubWVqpgVRSN4k1g",
+                  label: "Youtube",
+                },
               ].map((soc, idx) => (
-                <a 
-                  key={idx} 
-                  href={soc.href} 
-                  className="p-2 border border-white/5 rounded-full bg-white/[0.01] hover:bg-white/[0.05] hover:border-white/20 text-white/90 transition-all duration-300" 
+                <a
+                  key={idx}
+                  href={soc.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 border border-white/5 rounded-full bg-white/[0.01] hover:bg-white/[0.05] hover:border-white/20 text-white/90 transition-all duration-300"
                   aria-label={soc.label}
                 >
                   {soc.icon}
@@ -134,18 +157,32 @@ function Footer() {
           </div>
 
           {/* COLUMN 4: STUDIO CONTACT DETAILS */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-3">
             <h5 className="relative mb-6 text-[12px] font-bold uppercase tracking-[0.25em] text-white/40 after:absolute after:bottom-[-8px] after:left-0 after:h-[1px] after:w-8 after:bg-[var(--terracotta)]/40">
               Studio
             </h5>
             <div className="space-y-4 text-xs tracking-wide text-white/90 font-semibold uppercase">
-              <a href="indiacraftworld@gmail.com" className="flex items-center gap-3 group normal-case font-medium text-sm hover:underline decoration-[var(--terracotta)] underline-offset-4">
-                <Mail size={15} strokeWidth={1.5} className="text-white/40 shrink-0" />
+              <a
+                href="indiacraftworld@gmail.com"
+                className="flex items-center gap-3 group normal-case font-medium text-sm hover:underline decoration-[var(--terracotta)] underline-offset-4"
+              >
+                <Mail
+                  size={15}
+                  strokeWidth={1.5}
+                  className="text-white/40 shrink-0"
+                />
                 <span className="break-all">indiacraftworld@gmail.com</span>
               </a>
-              <a href="tel:+919810999976" className="flex items-center gap-3 group font-medium text-sm hover:underline decoration-[var(--terracotta)] underline-offset-4">
-                <Phone size={15} strokeWidth={1.5} className="text-white/40 shrink-0" />
-                <span>+91-9810999976</span>
+              <a
+                href="tel:+919625982035"
+                className="flex items-center gap-3 group font-medium text-sm hover:underline decoration-[var(--terracotta)] underline-offset-4"
+              >
+                <Phone
+                  size={15}
+                  strokeWidth={1.5}
+                  className="text-white/40 shrink-0"
+                />
+                <span>+91-9625982035</span>
               </a>
               {/* <div className="flex items-start gap-3 lowercase normal-case font-medium text-sm text-white/90">
                 <MapPin size={15} strokeWidth={1.5} className="text-white/40 mt-0.5 shrink-0" />
@@ -153,7 +190,6 @@ function Footer() {
               </div> */}
             </div>
           </div>
-
         </div>
 
         {/* ─── BOTTOM SECTION: METADATA & COPYRIGHT ─── */}
@@ -169,8 +205,8 @@ function Footer() {
               { label: "Refund Policy", href: "/refund-policy" },
             ].map((metaLink) => (
               <Link
-                key={metaLink.label} 
-                to={metaLink.href} 
+                key={metaLink.label}
+                to={metaLink.href}
                 className="text-white/90 transition-all text-sm font-normal duration-300 hover:underline decoration-[var(--terracotta)] underline-offset-4"
               >
                 {metaLink.label}
@@ -178,7 +214,6 @@ function Footer() {
             ))}
           </div>
         </div>
-        
       </div>
     </footer>
   );

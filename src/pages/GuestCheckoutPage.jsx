@@ -9,12 +9,12 @@ const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const API_URL = import.meta.env.VITE_API_BASE_URL;
 const libraries = ["places"];
 
-// ─── Calc helpers ─────────────────────────────────────────────────────────────
-const DELIVERY_RANGE_MILES = 10;
+// ─── Calc Helpers ─────────────────────────────────────────────────────────────
+const DELIVERY_RANGE_MILES = 16;
 
 const DELIVERY_RULES = {
-  SP: { withinRange: 10, outsideRange: 10 },
-  BB: { withinRange: 15, outsideRange: 50 },
+  SP: { withinRange: 100, outsideRange: 150 },
+  BB: { withinRange: 100, outsideRange: 150 },
 };
 
 const calcDeliveryFee = (cat, miles) => {
@@ -30,17 +30,17 @@ const calcCartDeliveryFee = (items, miles) => {
 };
 
 const calcTotal = (items, miles = null, isPickup = false, discount = 0, isFreeShipping = false) => {
-  let subtotal = 0, vat = 0;
+  let subtotal = 0;
   items.forEach((item) => {
     const qty = item.quantity || 0;
-    const excl = item.prices?.excludeVat?.discount ?? item.prices?.excludeVat?.base ?? 0;
-    const incl = item.prices?.includeVat?.discount ?? item.prices?.includeVat?.base ?? 0;
-    subtotal += excl * qty;
-    vat += (incl - excl) * qty;
+    // Always use includeVat price — matches backend priceAtPurchase (base + vat)
+    const price = item.prices?.includeVat?.discount ?? item.prices?.includeVat?.base ?? item.prices?.excludeVat?.discount ?? item.prices?.excludeVat?.base ?? 0;
+    subtotal += price * qty;
   });
-  const shipping = (isPickup || isFreeShipping) ? 0 : (calcCartDeliveryFee(items, miles) ?? 0);
-  const total = Math.max(subtotal + vat + shipping - discount, 0);
-  return { subtotal, vat, shipping, discount, total };
+  const computedShipping = calcCartDeliveryFee(items, miles);
+  const shipping = (isPickup || isFreeShipping) ? 0 : (computedShipping ?? 0);
+  const total = Math.max(subtotal + shipping - discount, 0);
+  return { subtotal, shipping, discount, total };
 };
 
 // ─── Validators ────────────────────────────────────────────────────────────────
@@ -95,7 +95,15 @@ const FieldError = ({ msg }) =>
   ) : null;
 
 // ─── Main Form ────────────────────────────────────────────────────────────────
-const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingMethodChange, onCouponApplied }) => {
+const GuestCheckoutForm = ({ 
+  items, 
+  distanceMiles, 
+  setDistanceMiles, 
+  onShippingMethodChange, 
+  onCouponApplied, 
+  appliedCoupon, 
+  setAppliedCoupon 
+}) => {
   const navigate = useNavigate();
   const { updateCartCount } = useCart();
   const [submitting, setSubmitting] = useState(false);
@@ -106,7 +114,6 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
   const [searchInput, setSearchInput] = useState("");
   const [touched, setTouched] = useState({});
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState(null);
   const autocompleteRef = useRef(null);
 
   const [form, setForm] = useState({
@@ -115,7 +122,13 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
   });
 
   const isPickup = shippingMethod === "store_pickup";
-  const { total } = calcTotal(items, distanceMiles, isPickup, appliedCoupon?.discountAmount ?? 0, appliedCoupon?.isFreeShipping ?? false);
+  const { total } = calcTotal(
+    items, 
+    distanceMiles, 
+    isPickup, 
+    appliedCoupon?.discountAmount ?? 0, 
+    appliedCoupon?.isFreeShipping ?? false
+  );
 
   const errors = {
     email: validators.email(form.email),
@@ -162,6 +175,7 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
     setSearchInput(newAddress);
     setCoords({ lat: place.geometry.location.lat(), lng: place.geometry.location.lng() });
     setDeliveryStatus(null);
+    setDistanceMiles(null);
   };
 
   const handleVerifyDelivery = async () => {
@@ -174,7 +188,11 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
       const res = await fetch(`${API_URL}/orders/check-delivery?lat=${coords.lat}&lng=${coords.lng}`);
       const data = await res.json();
       setDeliveryStatus(data.data);
-      setDistanceMiles(data.data?.distanceMiles ?? null);
+      if (data.data?.available) {
+        setDistanceMiles(data.data?.distanceKm ?? 0);
+      } else {
+        setDistanceMiles(null);
+      }
     } catch {
       toast.error("Error verifying delivery coverage");
     } finally {
@@ -349,22 +367,35 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
                   <input
                     type="text"
                     placeholder="Enter street address or pincode"
+                    value={searchInput}
                     onChange={(e) => {
                       setSearchInput(e.target.value);
-                      if (!e.target.value) { setCoords(null); setDeliveryStatus(null); }
+                      if (!e.target.value) { 
+                        setCoords(null); 
+                        setDeliveryStatus(null); 
+                        setDistanceMiles(null);
+                      }
                     }}
                     className="w-full border border-gray-300 rounded-lg pl-10 pr-4 py-3 text-sm outline-none focus:border-black"
                   />
                 </Autocomplete>
               </div>
             </div>
-            <button type="button" onClick={handleVerifyDelivery} disabled={checkingLocation || !searchInput.trim()}
-              className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${!searchInput.trim() || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90"}`}>
+            <button 
+              type="button" 
+              onClick={handleVerifyDelivery} 
+              disabled={checkingLocation || !searchInput.trim()}
+              className={`w-full py-3.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+                !searchInput.trim() || checkingLocation ? "bg-gray-200 text-gray-400 cursor-not-allowed" : "bg-primary text-white hover:bg-primary/90"
+              }`}
+            >
               {checkingLocation ? <Loader2 size={16} className="animate-spin" /> : <Truck size={18} />}
               {checkingLocation ? "Checking Coverage..." : "Verify Delivery Coverage"}
             </button>
             {deliveryStatus && (
-              <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"}`}>
+              <div className={`flex items-center gap-3 text-sm font-semibold rounded-lg px-4 py-3 border ${
+                deliveryStatus.available ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-600 border-red-200"
+              }`}>
                 {deliveryStatus.available ? <CheckCircle size={18} className="shrink-0" /> : <AlertCircle size={18} className="shrink-0" />}
                 <span>{deliveryStatus.message}</span>
               </div>
@@ -444,8 +475,9 @@ const GuestCheckoutForm = ({ items, distanceMiles, setDistanceMiles, onShippingM
                   const data = await res.json();
                   if (!data.success) throw new Error(data.message);
                   const c = data.data;
-                  setAppliedCoupon({ code: c.code, discountAmount: c.discountAmount, isFreeShipping: c.isFreeShipping });
-                  onCouponApplied?.({ code: c.code, discountAmount: c.discountAmount, isFreeShipping: c.isFreeShipping });
+                  const newCoupon = { code: c.code, discountAmount: c.discountAmount, isFreeShipping: c.isFreeShipping };
+                  setAppliedCoupon(newCoupon);
+                  onCouponApplied?.(newCoupon);
                   toast.success("Coupon applied!");
                 } catch (err) {
                   toast.error(err.message || "Invalid coupon");
@@ -506,8 +538,14 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
         <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
         <div className="flex justify-between text-sm text-gray-500">
           <span>Shipping Fee</span>
-          <span className={isPickup || shipping === 0 ? "text-green-600 font-bold" : "text-gray-800"}>
-            {isPickup ? "FREE (Store Pickup)" : isFreeShipping ? "FREE (Coupon)" : distanceMiles === null ? "Calculated after address" : shipping === 0 ? "FREE" : `₹${shipping.toFixed(2)}`}
+          <span className={isPickup || isFreeShipping || (shipping === 0 && distanceMiles !== null) ? "text-green-600 font-bold" : "text-gray-800"}>
+            {isPickup 
+              ? "FREE (Store Pickup)" 
+              : isFreeShipping 
+              ? "FREE (Coupon)" 
+              : distanceMiles === null 
+              ? <span className="text-orange-500 font-semibold">Calculated after address</span> 
+              : `₹${shipping.toFixed(2)}`}
           </span>
         </div>
         {discount > 0 && (
@@ -561,8 +599,21 @@ const GuestCheckoutPage = () => {
     <div className="bg-gray-50/50 min-h-screen lg:py-8 py-5">
       <div className="custom-container">
         <div className="flex flex-col lg:flex-row lg:gap-x-10 items-start">
-          <GuestCheckoutForm items={items} distanceMiles={distanceMiles} setDistanceMiles={setDistanceMiles} onShippingMethodChange={setIsPickup} onCouponApplied={setAppliedCoupon} />
-          <OrderSummary items={items} distanceMiles={distanceMiles} isPickup={isPickup} appliedCoupon={appliedCoupon} />
+          <GuestCheckoutForm 
+            items={items} 
+            distanceMiles={distanceMiles} 
+            setDistanceMiles={setDistanceMiles} 
+            onShippingMethodChange={setIsPickup} 
+            onCouponApplied={setAppliedCoupon} 
+            appliedCoupon={appliedCoupon}
+            setAppliedCoupon={setAppliedCoupon}
+          />
+          <OrderSummary 
+            items={items} 
+            distanceMiles={distanceMiles} 
+            isPickup={isPickup} 
+            appliedCoupon={appliedCoupon} 
+          />
         </div>
       </div>
     </div>

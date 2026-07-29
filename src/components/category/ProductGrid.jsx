@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { FaStar, FaStarHalfAlt, FaRegStar, FaHeart } from "react-icons/fa";
+// import { FaStar, FaStarHalfAlt } from "react-icons/fa";
 import { ShoppingCart, Loader2, Plus, Minus, Heart } from "lucide-react";
 import { addToCart, getCart, removeProductFromCart } from "../../lib/cart";
 import { toggleWishlist, getWishlist } from "../../lib/wishlist";
@@ -178,20 +179,29 @@ const ProductGrid = ({ productList }) => {
   };
 
   const renderGridCardStars = (averageRating) => {
-    const stars = [];
-    const rating = averageRating || 0;
-    
-    for (let i = 1; i <= 5; i++) {
-      if (i <= rating) {
-        stars.push(<FaStar key={i} className="text-[#f3dd70] text-[10px] sm:text-[13px]" />);
-      } else if (i - 0.5 <= rating) {
-        stars.push(<FaStarHalfAlt key={i} className="text-[#f3dd70] text-[10px] sm:text-[13px]" />);
-      } else {
-        stars.push(<FaRegStar key={i} className="text-gray-200 text-[10px] sm:text-[13px]" />);
-      }
+  const stars = [];
+  const rating = averageRating || 0;
+
+  for (let i = 1; i <= 5; i++) {
+    if (i <= rating) {
+      // Full yellow star
+      stars.push(
+        <FaStar key={i} className="text-[#f3dd70] text-[10px] sm:text-[13px]" />
+      );
+    } else if (i - 0.5 <= rating) {
+      // Half yellow star
+      stars.push(
+        <FaStarHalfAlt key={i} className="text-[#f3dd70] text-[10px] sm:text-[13px]" />
+      );
+    } else {
+      // Light Grey Star (Poora ander tak grey fill hoga, border-only nahi rahega)
+      stars.push(
+        <FaStar key={i} className="text-[#f3dd70] text-[10px] sm:text-[13px]" />
+      );
     }
-    return stars;
-  };
+  }
+  return stars;
+};
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 ">

@@ -1,9 +1,9 @@
-import hibiscusVideoAsset from "../../assets/about.mp4";
+import hibiscusVideoAsset from "../../assets/Hero.mp4";
 function Story() {
   return (
     <section
       id="story"
-      className="bg-foreground px-5 py-24 text-[var(--cream)] md:px-8 md:py-32"
+      className="bg-foreground px-5 py-24 text-[var(--cream)] md:px-8 "
     >
       <div className="mx-auto grid max-w-7xl items-center gap-16 md:grid-cols-2 md:gap-20">
         <div className="relative overflow-hidden rounded-3xl">

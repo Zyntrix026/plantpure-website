@@ -75,7 +75,7 @@ const CancelModal = ({ order, onClose, onConfirm, loading }) => {
 
         <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-5">
           <p className="text-sm text-amber-700 font-semibold">
-            Your cancellation request will be sent to admin for review. If approved, a full refund of <span className="font-black">₹{order.totalPrice?.toFixed(2)}</span> will be initiated.
+            Your cancellation request will be sent to admin for review. If approved, a full refund of <span className="font-black">Rs. {order.totalPrice?.toFixed(2)}</span> will be initiated.
           </p>
           <p className="text-xs text-amber-500 mt-1">Admin will review your request within 24 hours.</p>
         </div>
@@ -239,7 +239,7 @@ const Orders = () => {
                   </h3>
 
                   <div className="flex items-center justify-center md:justify-start gap-3 mt-3">
-                    <span className="text-xl font-extrabold text-slate-900">₹{order.totalPrice.toFixed(2)}</span>
+                    <span className="text-xl font-extrabold text-slate-900">Rs. {order.totalPrice.toFixed(2)}</span>
                     <span className="text-xs font-bold text-slate-400 uppercase tracking-tighter bg-slate-100 px-2 py-1 rounded-lg">
                       {order.paymentMethod}
                     </span>

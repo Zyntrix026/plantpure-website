@@ -423,11 +423,11 @@ const Wishlist = () => {
                         {/* Pricing architecture block */}
                         <div className="pt-2 flex items-baseline gap-3">
                           <span className="text-xl font-bold tracking-tight text-foreground">
-                            ₹{displayPrice}
+                            Rs. {displayPrice}
                           </span>
                           {hasDiscount && (
                             <span className="text-xs text-foreground/30 line-through font-medium">
-                              ₹{originalPrice}
+                              Rs. {originalPrice}
                             </span>
                           )}
                           {product.discountPercentage && (

@@ -339,7 +339,7 @@ const ProductInfo = ({ product }) => {
       <div className="mt-5 p-4 rounded-xl border border-gray-100 bg-gray-50/50">
         <div className="flex items-baseline gap-3">
           <span className="text-3xl sm:text-4xl font-bold text-primary">
-            ₹{displayPrice}
+            Rs. {displayPrice}
             <span className="text-xs ml-1.5 text-gray-400 font-bold tracking-tighter">Inc all taxes </span>
           </span>
         </div>

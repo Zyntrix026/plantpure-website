@@ -194,10 +194,10 @@ const OrderConfirmation = () => {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-primary line-clamp-1">{item.name}</p>
-                  <p className="text-xs text-gray-400">Qty: {item.quantity} × ₹{item.priceAtPurchase?.toFixed(2)}</p>
+                  <p className="text-xs text-gray-400">Qty: {item.quantity} × Rs. {item.priceAtPurchase?.toFixed(2)}</p>
                 </div>
                 <span className="text-sm font-bold text-primary shrink-0">
-                  ₹{(item.quantity * item.priceAtPurchase).toFixed(2)}
+                  Rs. {(item.quantity * item.priceAtPurchase).toFixed(2)}
                 </span>
               </div>
             ))}
@@ -210,23 +210,23 @@ const OrderConfirmation = () => {
           <div className="space-y-2 text-sm text-gray-500">
             <div className="flex justify-between">
               <span>Items Total</span>
-              <span className="font-medium text-primary">₹{order.itemsPrice?.toFixed(2)}</span>
+              <span className="font-medium text-primary">Rs. {order.itemsPrice?.toFixed(2)}</span>
             </div>
             {order.coupon && (
               <div className="flex justify-between text-green-600 font-medium">
                 <span>Discount ({order.coupon.code})</span>
-                <span>-₹{order.coupon.discountAmount?.toFixed(2)}</span>
+                <span>-Rs. {order.coupon.discountAmount?.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between">
               <span>Shipping</span>
               <span className={`font-bold ${order.shippingPrice === 0 ? "text-green-600" : "text-primary"}`}>
-                {order.shippingPrice === 0 ? "Free" : `₹${order.shippingPrice?.toFixed(2)}`}
+                {order.shippingPrice === 0 ? "Free" : `Rs. ${order.shippingPrice?.toFixed(2)}`}
               </span>
             </div>
             <div className="flex justify-between border-t border-dashed border-gray-200 pt-2 text-base font-bold text-primary">
               <span>Total</span>
-              <span>₹{order.totalPrice?.toFixed(2)}</span>
+              <span>Rs. {order.totalPrice?.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-xs pt-1">
               <span>Payment Method</span>
@@ -273,7 +273,7 @@ const OrderConfirmation = () => {
         {/* Refund Info */}
         {order.paymentStatus === "refunded" && (
           <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-            <p className="text-emerald-700 font-bold text-sm">💸 Refund of ₹{order.totalPrice?.toFixed(2)} has been initiated to your original payment method.</p>
+            <p className="text-emerald-700 font-bold text-sm">💸 Refund of Rs. {order.totalPrice?.toFixed(2)} has been initiated to your original payment method.</p>
             <p className="text-emerald-600 text-xs mt-1">Typically appears within 5–10 business days.</p>
           </div>
         )}
@@ -297,7 +297,7 @@ const OrderConfirmation = () => {
             </div>
             <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mb-5">
               <p className="text-sm text-amber-700 font-semibold">
-                Your cancellation request will be sent to admin for review. If approved, a full refund of <span className="font-black">₹{order.totalPrice?.toFixed(2)}</span> will be initiated.
+                Your cancellation request will be sent to admin for review. If approved, a full refund of <span className="font-black">Rs. {order.totalPrice?.toFixed(2)}</span> will be initiated.
               </p>
               <p className="text-xs text-amber-500 mt-1">Admin will review your request within 24 hours.</p>
             </div>

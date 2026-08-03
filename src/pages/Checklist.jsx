@@ -328,10 +328,10 @@ const CheckList = () => {
                           </div>
                         </div>
                         <div className="mt-3 flex items-center gap-3">
-                          <span className="text-lg font-bold text-[#212121]">₹{(unitPrice || 0).toFixed(2)}</span>
+                          <span className="text-lg font-bold text-[#212121]">Rs. {(unitPrice || 0).toFixed(2)}</span>
                           {hasDiscount && (
                             <>
-                              <span className="text-sm text-gray-400 line-through">₹{(unitOriginal || 0).toFixed(2)}</span>
+                              <span className="text-sm text-gray-400 line-through">Rs. {(unitOriginal || 0).toFixed(2)}</span>
                               <span className="text-sm text-green-600 font-semibold">{item.discountPercentage}</span>
                             </>
                           )}
@@ -372,15 +372,15 @@ const CheckList = () => {
               <div className="p-4 space-y-4">
                 <div className="flex justify-between text-base text-gray-500 font-medium">
                   <span>Price ({totalQuantity} items)</span>
-                  <span>₹{summary.subtotalExclVat.toFixed(2)}</span>
+                  <span>Rs. {summary.subtotalExclVat.toFixed(2)}</span>
                 </div>
                 {summary.savings > 0 && (
                   <div className="flex justify-between text-base text-green-600 font-medium">
-                    <span>Discount</span><span>-₹{summary.savings.toFixed(2)}</span>
+                    <span>Discount</span><span>-Rs. {summary.savings.toFixed(2)}</span>
                   </div>
                 )}
                 {/* <div className="flex justify-between text-base text-gray-500 font-medium">
-                  <span>Total VAT</span><span>+₹{summary.totalVat.toFixed(2)}</span>
+                  <span>Total VAT</span><span>+Rs. {summary.totalVat.toFixed(2)}</span>
                 </div> */}
                 <div className="flex justify-between text-base text-gray-500 font-medium">
                   <span>Delivery Charges</span><span className="text-orange-500 font-bold text-sm">Calculated at checkout</span>
@@ -389,7 +389,7 @@ const CheckList = () => {
                   <div className="flex justify-between text-xl font-bold text-primary">
                     <span>Total Amount</span>
                     <div className="text-right">
-                      <p>₹{summary.totalInclVat.toFixed(2)}</p>
+                      <p>Rs. {summary.totalInclVat.toFixed(2)}</p>
                       <span className="text-[10px] text-gray-400 block font-normal">(Inclusive of all taxes)</span>
                     </div>
                   </div>
@@ -397,7 +397,7 @@ const CheckList = () => {
               </div>
               {summary.savings > 0 && (
                 <div className="p-4 bg-green-50/50 border-t border-gray-100 text-center font-bold text-green-600 text-sm italic">
-                  🎉 YOU SAVE ₹{summary.savings.toFixed(2)} ON THIS ORDER
+                  🎉 YOU SAVE Rs. {summary.savings.toFixed(2)} ON THIS ORDER
                 </div>
               )}
             </div>

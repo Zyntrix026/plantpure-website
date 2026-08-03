@@ -443,7 +443,7 @@ const GuestCheckoutForm = ({
               <span>{appliedCoupon.code}</span>
               {appliedCoupon.isFreeShipping
                 ? <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">Free Shipping</span>
-                : <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">-₹{appliedCoupon.discountAmount?.toFixed(2)}</span>
+                : <span className="text-xs font-bold bg-green-100 px-2 py-0.5 rounded-full">-Rs.{appliedCoupon.discountAmount?.toFixed(2)}</span>
               }
             </div>
             <button type="button" onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500 transition-colors">
@@ -500,7 +500,7 @@ const GuestCheckoutForm = ({
         {submitting ? (
           <Loader2 size={20} className="animate-spin" />
         ) : (
-          `Pay & Place Order • ₹${total.toFixed(2)}`
+          `Pay & Place Order • Rs. ${total.toFixed(2)}`
         )}
       </button>
     </form>
@@ -527,15 +527,15 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-800 truncate">{item.name}</p>
-                <p className="text-xs text-gray-400">₹{price.toFixed(2)} each</p>
+                <p className="text-xs text-gray-400">Rs. {price.toFixed(2)} each</p>
               </div>
-              <span className="text-sm font-bold text-primary">₹{(price * item.quantity).toFixed(2)}</span>
+              <span className="text-sm font-bold text-primary">Rs. {(price * item.quantity).toFixed(2)}</span>
             </div>
           );
         })}
       </div>
       <div className="mt-8 pt-6 border-t border-gray-100 space-y-3">
-        <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
+        <div className="flex justify-between text-sm text-gray-500"><span>Subtotal</span><span>Rs. {subtotal.toFixed(2)}</span></div>
         <div className="flex justify-between text-sm text-gray-500">
           <span>Shipping Fee</span>
           <span className={isPickup || isFreeShipping || (shipping === 0 && distanceMiles !== null) ? "text-green-600 font-bold" : "text-gray-800"}>
@@ -545,18 +545,18 @@ const OrderSummary = ({ items, distanceMiles, isPickup, appliedCoupon }) => {
               ? "FREE (Coupon)" 
               : distanceMiles === null 
               ? <span className="text-orange-500 font-semibold">Calculated after address</span> 
-              : `₹${shipping.toFixed(2)}`}
+              : `Rs. ${shipping.toFixed(2)}`}
           </span>
         </div>
         {discount > 0 && (
           <div className="flex justify-between text-sm text-green-600 font-semibold">
             <span>Coupon Discount ({appliedCoupon?.code})</span>
-            <span>-₹{discount.toFixed(2)}</span>
+            <span>-Rs. {discount.toFixed(2)}</span>
           </div>
         )}
         <div className="pt-4 mt-2 flex justify-between items-center border-t-2 border-primary/10">
           <span className="text-lg font-black text-primary">Grand Total</span>
-          <span className="text-xl font-black text-primary">₹{total.toFixed(2)}</span>
+          <span className="text-xl font-black text-primary">Rs. {total.toFixed(2)}</span>
         </div>
       </div>
     </div>

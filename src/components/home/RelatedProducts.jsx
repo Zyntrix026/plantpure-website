@@ -366,8 +366,8 @@ const RelatedProducts = ({ id }) => {
               {/* Price and Quantity Controls */}
               <div className="flex flex-row items-center justify-between gap-1 mt-auto mb-3 sm:mb-4">
                 <div className="flex flex-col sm:flex-row sm:items-baseline gap-0.5 sm:gap-2 min-w-0">
-                  <span className="text-primary font-bold text-[15px] sm:text-[20px] underline truncate">₹{displayPrice}</span>
-                  {hasDiscount && <span className="text-[10px] sm:text-[12px] line-through text-gray-400 font-semibold truncate">₹{originalPrice}</span>}
+                  <span className="text-primary font-bold text-[15px] sm:text-[20px] underline truncate">Rs. {displayPrice}</span>
+                  {hasDiscount && <span className="text-[10px] sm:text-[12px] line-through text-gray-400 font-semibold truncate">Rs. {originalPrice}</span>}
                 </div>
 
                 <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart, Heart, Loader2, CheckCircle2, AlertCircle, Plus, Minus, ChevronDown } from "lucide-react";
+import { ShoppingCart, Heart, Loader2, CheckCircle2, AlertCircle, Plus, Minus, ChevronDown, ArrowRight } from "lucide-react";
 import { FaStar, FaStarHalfAlt, FaHeart } from "react-icons/fa";
 import { addToCart, getCart, removeProductFromCart } from "../../lib/cart";
 import { toggleWishlist, getWishlist } from "../../lib/wishlist";
@@ -9,6 +9,7 @@ import { addToGuestCart, removeFromGuestCart, getGuestCart } from "../../lib/gue
 import { toggleGuestWishlist, getGuestWishlist, isGuestWishlisted } from "../../lib/guestWishlist";
 import toast from "react-hot-toast";
 import { useCart } from "../../context/CartContext";
+import CheckoutAuthDrawer from '../checklist/CheckoutAuthDrawer'
 
 const applyVat = (price, vat) => Number((price + (price * vat) / 100).toFixed(2));
 
@@ -20,6 +21,7 @@ const ProductInfo = ({ product }) => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [selectedVariant, setSelectedVariant] = useState(null);
+  const [isAuthDrawerOpen, setIsAuthDrawerOpen] = useState(false);
   const { updateCartCount, isVatInc } = useCart();
 
   // Stable random review count (6 to 9) generated once per mount for zero-review products
@@ -81,6 +83,14 @@ const ProductInfo = ({ product }) => {
       toast.error(msg, { duration: 3000, position: "bottom-right" });
     } else {
       toast.success(msg, { duration: 3000, position: "bottom-right", style: { background: "#253D4E", color: "#fff", fontSize: "14px", fontWeight: "bold", borderRadius: "10px" } });
+    }
+  };
+
+  const handleCheckoutClick = () => {
+    if (isAuthenticated()) {
+      navigate("/checkout");
+    } else {
+      setIsAuthDrawerOpen(true);
     }
   };
 
@@ -235,7 +245,6 @@ const ProductInfo = ({ product }) => {
       } else if (i - 0.5 <= rating) {
         stars.push(<FaStarHalfAlt key={i} size={14} className="text-[#f3dd70]" />);
       } else {
-        // FaStar with light grey fill so internal body is colored, not transparent
         stars.push(<FaStar key={i} size={14} className="text-gray-200" />);
       }
     }
@@ -347,6 +356,7 @@ const ProductInfo = ({ product }) => {
 
       <p className="mt-6 text-[#253D4E]/70 leading-relaxed font-medium text-[15px]">{product.excerpt}</p>
 
+      {/* Actions Block */}
       <div className="flex flex-wrap items-center gap-4 mt-8">
         <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-gray-200 shadow-sm">
           <button onClick={() => handleQuantity("dec")} disabled={updatingId === cartItemKey || quantity <= 1} className="w-10 h-10 flex items-center justify-center rounded bg-gray-50 hover:bg-gray-100 disabled:opacity-30 transition-all active:scale-90">
@@ -360,6 +370,7 @@ const ProductInfo = ({ product }) => {
           </button>
         </div>
 
+        {/* Add to Cart Button */}
         <button
           onClick={() => handleQuantity("inc")}
           disabled={adding || isOutOfStock || isMaxLimitReached || (product.hasVariants && !selectedVariant)}
@@ -369,6 +380,18 @@ const ProductInfo = ({ product }) => {
           <span>{isOutOfStock ? "Out of Stock" : isMaxLimitReached ? "Limit Reached" : adding ? "Updating..." : quantity > 0 ? "Add More" : "Add to Cart"}</span>
         </button>
 
+        {/* Place Order Button - Only Visible when quantity > 0 */}
+        {quantity > 0 && (
+          <button
+            onClick={handleCheckoutClick}
+            className="flex items-center justify-center flex-1 sm:flex-none min-w-[180px] gap-2 bg-[#253D4E] text-white px-8 py-3.5 rounded-lg text-sm font-black hover:bg-[#1e313e] transition shadow-lg shadow-[#253D4E]/20 animate-in fade-in zoom-in duration-200"
+          >
+            <span>Place Order</span>
+            <ArrowRight size={18} />
+          </button>
+        )}
+
+        {/* Wishlist Button */}
         <button onClick={handleWishlistToggle} disabled={wishlistLoading} className="p-3.5 border border-gray-200 rounded-lg hover:bg-white hover:border-secondary hover:shadow-md transition group">
           {wishlistLoading ? <Loader2 size={20} className="animate-spin text-gray-400" /> : isWishlisted ? <FaHeart size={20} className="text-red-500" /> : <Heart size={20} className="text-gray-400 group-hover:text-red-500 transition-colors" />}
         </button>
@@ -384,6 +407,12 @@ const ProductInfo = ({ product }) => {
           <span className="text-[#253D4E] font-medium">{product.brand}</span>
         </div>
       </div>
+
+      {/* Checkout Authentication Drawer Modal */}
+      <CheckoutAuthDrawer 
+        isOpen={isAuthDrawerOpen} 
+        onClose={() => setIsAuthDrawerOpen(false)} 
+      />
     </div>
   );
 };

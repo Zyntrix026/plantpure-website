@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, CheckCircle, Search, Truck, AlertCircle, Tag, X } from "lucide-react";
+import { Loader2, CheckCircle, Search, Truck, AlertCircle, Tag, X, Banknote } from "lucide-react";
 import { useJsApiLoader, Autocomplete } from "@react-google-maps/api";
 import toast from "react-hot-toast";
 import { useCart } from "../context/CartContext";
@@ -108,6 +108,7 @@ const GuestCheckoutForm = ({
   const { updateCartCount } = useCart();
   const [submitting, setSubmitting] = useState(false);
   const [shippingMethod] = useState("delivery");
+  const [paymentMethod, setPaymentMethod] = useState("Cashfree");
   const [deliveryStatus, setDeliveryStatus] = useState(null);
   const [checkingLocation, setCheckingLocation] = useState(false);
   const [coords, setCoords] = useState(null);
@@ -230,6 +231,37 @@ const GuestCheckoutForm = ({
       return;
     }
 
+    // ── COD Flow ──────────────────────────────────────────────────────────────
+    if (paymentMethod === "COD") {
+      try {
+        setSubmitting(true);
+        const shippingAddress = buildShippingAddress();
+        const res = await fetch(`${API_URL}/orders/create-after-payment`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            shippingAddress,
+            shippingMethod,
+            paymentMethod: "COD",
+            guestEmail: form.email,
+            items: items.map((i) => ({ productId: i.productId, variantId: i.variantId || null, quantity: i.quantity, name: i.name })),
+          }),
+        });
+        const orderData = await res.json();
+        if (!orderData.success) throw new Error(orderData.message);
+        localStorage.removeItem("guest_cart");
+        updateCartCount(0);
+        toast.success("Order placed! Pay on delivery.");
+        navigate(`/guest-order-success?orderNumber=${orderData.data.orderNumber}`);
+      } catch (err) {
+        toast.error(err.message || "Failed to place COD order.");
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    // ── Cashfree Flow ─────────────────────────────────────────────────────────
     if (!window.Cashfree) {
       toast.error("Cashfree SDK failed to load. Please check your HTML setup.");
       return;
@@ -491,7 +523,43 @@ const GuestCheckoutForm = ({
         )}
       </section>
 
-      {/* SINGLE SUBMIT AND PAY BUTTON */}
+      {/* SECTION 4: PAYMENT METHOD */}
+      <section className="space-y-3">
+        <h3 className="text-lg font-bold text-primary flex items-center gap-2">
+          <span className="w-6 h-6 bg-primary text-white rounded-full flex items-center justify-center text-xs font-bold">4</span>
+          Payment Method
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("Cashfree")}
+            className={`flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 font-bold text-sm transition-all ${
+              paymentMethod === "Cashfree"
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            💳 Pay Online
+          </button>
+          <button
+            type="button"
+            onClick={() => setPaymentMethod("COD")}
+            className={`flex items-center justify-center gap-2 py-3.5 rounded-xl border-2 font-bold text-sm transition-all ${
+              paymentMethod === "COD"
+                ? "border-primary bg-primary/5 text-primary"
+                : "border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            <Banknote size={16} /> Cash on Delivery
+          </button>
+        </div>
+        {/* {paymentMethod === "COD" && (
+          <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            ⚠️ Extra ₹30 COD handling fee may apply. Pay in cash when your order arrives.
+          </p>
+        )} */}
+      </section>
+
       <button
         type="submit"
         disabled={submitting}
@@ -499,6 +567,8 @@ const GuestCheckoutForm = ({
       >
         {submitting ? (
           <Loader2 size={20} className="animate-spin" />
+        ) : paymentMethod === "COD" ? (
+          `Place COD Order • Rs. ${total.toFixed(2)}`
         ) : (
           `Pay & Place Order • Rs. ${total.toFixed(2)}`
         )}

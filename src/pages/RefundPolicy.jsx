@@ -90,7 +90,7 @@ const RefundPolicy = () => {
                 Email: <a href="mailto:indiacraftworld@gmail.com" className="text-emerald-600 hover:underline">indiacraftworld@gmail.com</a>
               </p>
               <p className="text-xs text-gray-500">
-                Phone: <a href="tel:+919625982035" className="text-emerald-600 hover:underline">+91-9625982035</a>
+                Phone: <a href="tel:+919810999976" className="text-emerald-600 hover:underline">+91-9810999976</a>
               </p>
             </div>
           </section>

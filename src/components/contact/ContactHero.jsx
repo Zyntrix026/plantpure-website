@@ -30,10 +30,10 @@ const ContactHero = () => {
               Call Us Today
             </h3>
             <a
-              href="tel:+919625982035"
+              href="tel:+919810999976"
               className="text-base sm:text-lg font-bold text-[#253D4E] hover:text-emerald-600 transition-colors"
             >
-              +91-9625982035
+              +91-9810999976
             </a>
           </div>
 

@@ -174,7 +174,7 @@ function Footer() {
                 <span className="break-all">indiacraftworld@gmail.com</span>
               </a>
               <a
-                href="tel:+919625982035"
+                href="tel:+919810999976"
                 className="flex items-center gap-3 group font-medium text-sm hover:underline decoration-[var(--terracotta)] underline-offset-4"
               >
                 <Phone
@@ -182,7 +182,7 @@ function Footer() {
                   strokeWidth={1.5}
                   className="text-white/40 shrink-0"
                 />
-                <span>+91-9625982035</span>
+                <span>+91 9810999976</span>
               </a>
               {/* <div className="flex items-start gap-3 lowercase normal-case font-medium text-sm text-white/90">
                 <MapPin size={15} strokeWidth={1.5} className="text-white/40 mt-0.5 shrink-0" />

@@ -7,7 +7,7 @@ const ProductSidebar = () => {
     { name: "Natural Hair", count: 3, slug: "products" },
     { name: "Hair Cleansers", count: 5, slug: "products" },
     { name: "Natural Skin Care", count: 2, slug: "products" },
-    { name: "Hair Seram and Oils", count: 3, slug: "products" },
+    { name: "Hair Serum and Oils", count: 3, slug: "products" },
     
   ];
 

@@ -103,7 +103,7 @@ const PrivacyPolicy = () => {
             <div className="bg-[#faf9f6] p-4 rounded-xl border border-gray-100 inline-block space-y-1">
               <p className="font-bold text-sm">PlantPure Data Protection Office</p>
               <p className="text-xs text-gray-500">Email: <a href="mailto:indiacraftworld@gmail.com" className="text-emerald-600 hover:underline">indiacraftworld@gmail.com</a></p>
-              <p className="text-xs text-gray-500">Phone: <a href="tel:+919625982035" className="text-emerald-600 hover:underline">+91-9625982035</a></p>
+              <p className="text-xs text-gray-500">Phone: <a href="tel:+919810999976" className="text-emerald-600 hover:underline">+91-9810999976</a></p>
             </div>
           </section>
 

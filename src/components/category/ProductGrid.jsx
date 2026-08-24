@@ -258,7 +258,7 @@ const ProductGrid = ({ productList }) => {
                   <div className="flex justify-between items-center mb-1 gap-1">
                     <p className="text-[8px] sm:text-[10px] text-gray-400 font-medium uppercase tracking-tight truncate max-w-[50%]">SKU: {hasVariants && firstVariant.sku ? firstVariant.sku : product.sku}</p>
                     <span className={`text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${!isOutOfStock ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
-                      {!isOutOfStock ? `${activeStock} in stock` : "Out of stock"}
+                      {!isOutOfStock ? ` in stock` : "Out of stock"}
                     </span>
                   </div>
 

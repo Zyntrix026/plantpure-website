@@ -283,7 +283,7 @@ const ProductInfo = ({ product }) => {
         {!isOutOfStock ? (
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1 text-sm text-emerald-600 font-bold"><CheckCircle2 size={12} /> In Stock</span>
-            <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{activeStock} units available</span>
+            {/* <span className="text-[11px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">{activeStock} units available</span> */}
           </div>
         ) : (
           <span className="flex items-center gap-1 text-sm text-red-500 font-bold"><AlertCircle size={14} /> Out of Stock</span>

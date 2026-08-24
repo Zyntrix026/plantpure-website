@@ -340,7 +340,7 @@ const RelatedProducts = ({ id }) => {
                       SKU: {product.sku}
                     </p>
                     <span className={`text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${!isOutOfStock ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
-                      {!isOutOfStock ? `${activeStock} in stock` : 'Out of stock'}
+                      {!isOutOfStock ? ` in stock` : 'Out of stock'}
                     </span>
                   </div>
 

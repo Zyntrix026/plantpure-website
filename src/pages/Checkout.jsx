@@ -7,7 +7,7 @@ import { getCart } from "../lib/cart";
 import { createOrderAfterPayment, checkDelivery } from "../lib/order";
 import { useCart } from "../context/CartContext";
 import { getProfile } from "../lib/profile";
-import { api } from "../lib/api.js"; // Central API helper for making POST requests
+import { api } from "../lib/api.js"; 
 
 const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_API_KEY;
 const libraries = ["places"];
